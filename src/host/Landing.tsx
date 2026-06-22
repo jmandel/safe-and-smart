@@ -52,6 +52,31 @@ const ENTRIES: Entry[] = [
   },
 ];
 
+const TUTORIAL_CODE = `// In the playground (/author) React hooks, \`ui\`, and \`runApplet\` are provided —
+// just write a component. It receives clinical context + brokered capabilities.
+function App({ context, clinical }) {
+  const [count, setCount] = useState(0);
+
+  // FHIR with no token: fetch a familiar-looking endpoint, get parsed resources.
+  useEffect(() => {
+    fetch(\`https://fhir.internal/Patient/\${context.patient.id}\`)
+      .then(r => r.json())
+      .then(p => clinical.audit({ kind: 'application', message: 'loaded ' + p.id }));
+  }, []);
+
+  return (
+    <ui.Stack gap={12}>
+      <ui.Heading level={2}>Hello, {context.patient.display}</ui.Heading>
+      <ui.Text tone="muted">Sandboxed — no token, no DOM, no ambient network.</ui.Text>
+      <ui.Button variant="primary" onPress={() => setCount(count + 1)}>
+        Clicked {count} times
+      </ui.Button>
+    </ui.Stack>
+  );
+}
+
+runApplet(App, { appletId: 'org.example.hello', appletVersion: '0.1.0' });`;
+
 export function Landing() {
   return (
     <div className="landing">
@@ -92,6 +117,49 @@ export function Landing() {
             <span className="landing-cta">{entry.cta}</span>
           </a>
         ))}
+      </section>
+
+      <h2 className="landing-try">Write your own applet</h2>
+      <section className="landing-tutorial">
+        <div className="landing-tutorial-code">
+          <pre className="landing-code">
+            <code>{TUTORIAL_CODE}</code>
+          </pre>
+        </div>
+        <div className="landing-tutorial-guide">
+          <ol className="landing-steps">
+            <li>
+              <strong>Open the playground</strong> — go to <a href={asset('author/')}>/author</a>, edit
+              the starter, and press <em>Compile&nbsp;&amp;&nbsp;Run</em>. It compiles in your browser
+              (multi-file, real npm imports) and runs in the same locked sandbox.
+            </li>
+            <li>
+              <strong>Build the UI</strong> from the safe component set — <code>ui.Stack</code>,{' '}
+              <code>Grid</code>, <code>Card</code>, <code>Heading</code>, <code>Text</code>,{' '}
+              <code>Button</code>, <code>Input</code>, <code>Select</code>, <code>Table</code>,{' '}
+              <code>Vega</code>, <code>Svg</code>, <code>Image</code>, <code>Box</code> — with ordinary
+              React hooks and <code>onPress</code>/<code>onChange</code> events.
+            </li>
+            <li>
+              <strong>Use brokered capabilities</strong> (no token ever in the applet):
+              <ul className="landing-caps">
+                <li><code>fetch('https://fhir.internal/…')</code> — FHIR resources</li>
+                <li><code>fetch('https://llm.internal/v1/chat/completions', {'{ stream: true }'})</code> — OpenAI-compatible LLM</li>
+                <li><code>clinical.registerStylesheet({'{ css }'})</code> — your own validated CSS</li>
+                <li><code>clinical.fetchAttachment(…)</code> → <code>&lt;Image handle/&gt;</code> — protected docs</li>
+                <li><code>clinical.audit(…)</code> — write to the trusted audit log</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Ship it</strong> — or build a self-contained bundle and load it from anywhere:{' '}
+              <code>/run/?applet=https://your-host/applet.js</code>. Same sandbox, same rules.
+            </li>
+          </ol>
+          <p className="landing-tutorial-more">
+            The component props and events are fully typed; the host validates every element, style,
+            and SVG, so unsafe code fails closed rather than escaping.
+          </p>
+        </div>
       </section>
 
       <footer className="landing-foot">

@@ -260,6 +260,7 @@ const BUILTINS: AppletEntry[] = [
   {label: 'Order entry (form)', value: `${import.meta.env.BASE_URL}applets/order-entry-form.js`},
   {label: 'Note summarizer (streaming)', value: `${import.meta.env.BASE_URL}applets/note-summarizer.js`},
   {label: 'Document viewer (attachment)', value: `${import.meta.env.BASE_URL}applets/document-viewer.js`},
+  {label: 'Encounter cockpit (everything)', value: `${import.meta.env.BASE_URL}applets/encounter-cockpit.js`},
 ];
 
 const SAVED_KEY = 'safe-and-smart.applets';

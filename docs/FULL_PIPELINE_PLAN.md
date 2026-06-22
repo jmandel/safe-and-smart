@@ -1,5 +1,27 @@
 # Full-pipeline plan: from validated infra to applets using the full capabilities
 
+## STATUS — implemented (cores landed, each wired + demonstrated + guarded)
+- **W1 styling** ✅ ui-box/ui-inline + validated style/className + registerStylesheet
+  → ShadowRoot install. Demo: styled-vitals. Hostile: styled-exfil.
+- **W2 SVG** ✅ ui-svg + sanitizeSvgMarkup. Demo: careplan-diagram. Hostile: svg-exfil.
+- **W3 events/forms** ✅ ui-input/ui-textarea + keyboard/focus. Demo: order-entry-form.
+  (Fixed two real latent bugs: event value-read + onKeydown naming.)
+- **W4 multi-file+npm authoring** ✅ esbuild-wasm + esm.sh + CSS-as-text. Multi-file
+  starter importing date-fns, compiled in-browser, run in sandbox.
+- **W5 streaming LLM + tool** ✅ llmStream + SSE bridge + getLatestVitals tool. Demo:
+  note-summarizer.
+- **W6 chart a11y + perf** ✅ tooltips + tabular fallback (growth) + mutation stats.
+- **W7 protected attachments** ✅ opaque handles + ui-image. Demo: document-viewer.
+  Hostile: image-src-exfil.
+- **W8 signed catalog** ✅ (core) ECDSA verify + content-hash pinning + 5 tests.
+- **Capstone** ✅ encounter-cockpit composes CSS+FHIR+chart+streaming+tool+SVG+
+  attachment in one applet. Red-team ALL CONTAINED (7 hostile); 72 unit tests pass.
+
+Deferred items are noted per workstream below and in each commit (Monaco, IndexedDB
+package cache, OffscreenCanvas/virtual-list, build-time catalog signing, two-domain
+deploy, SIEM). The validators are no longer infra-only — every one is reachable and
+exercised by a working applet.
+
 ## 0. Honest starting point
 
 **Works end-to-end today:** opaque-iframe → blob-worker sandbox; Safe DOM mutation

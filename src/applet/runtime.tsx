@@ -220,6 +220,35 @@ async function bridgeChatCompletion(
     role: m.role,
     content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
   }));
+
+  // Streaming: present an OpenAI-style SSE chunk stream, fed by the broker's
+  // llmStream (which pushes deltas through a proxied onToken callback).
+  if ((body as {stream?: boolean}).stream) {
+    const encoder = new TextEncoder();
+    const sse = (obj: unknown) => encoder.encode(`data: ${JSON.stringify(obj)}\n\n`);
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const onToken = (delta: string) =>
+          controller.enqueue(
+            sse({
+              id: 'chatcmpl-sandbox',
+              object: 'chat.completion.chunk',
+              choices: [{index: 0, delta: {content: delta}, finish_reason: null}],
+            }),
+          );
+        try {
+          await clinical.llmStream({profile: body.model ?? 'default', messages}, onToken);
+          controller.enqueue(sse({choices: [{index: 0, delta: {}, finish_reason: 'stop'}]}));
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        } catch (error) {
+          controller.error(error);
+        }
+      },
+    });
+    return new Response(stream, {status: 200, headers: {'content-type': 'text/event-stream'}});
+  }
+
   const wantsJson =
     body.response_format?.type === 'json_object' || body.response_format?.type === 'json_schema';
 

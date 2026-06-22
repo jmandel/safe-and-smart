@@ -42,6 +42,25 @@ export interface LlmResponse {
   usage: {inputTokens: number; outputTokens: number};
 }
 
+// Closed registry of brokered tools a model profile may invoke. The BROKER executes
+// the tool (e.g. a scoped FHIR read) and feeds the result back into generation, so
+// the applet never needs the underlying capability and a model can't reach beyond
+// the allowlist. The model is given results, not raw access.
+export const LLM_TOOLS = ['getLatestVitals'] as const;
+export type LlmTool = (typeof LLM_TOOLS)[number];
+
+export interface LlmToolCall {
+  name: LlmTool;
+  summary: string; // human-readable note for the audit log
+}
+
+export interface LlmStreamResult {
+  model: string;
+  profile: string;
+  usage: {inputTokens: number; outputTokens: number};
+  toolCalls: LlmToolCall[];
+}
+
 // Closed vocabulary of audit event codes an applet may emit. The host records the
 // code as the authoritative, machine-readable event; the free-text `message` is
 // retained only as a bounded, sanitized human label (never trusted, never parsed).
@@ -100,6 +119,10 @@ export interface ClinicalContext {
 export interface ClinicalCapabilityApi {
   fhirRequest(request: FhirRequest): Promise<unknown>;
   llmComplete(request: LlmRequest): Promise<LlmResponse>;
+  // Streaming completion: the broker pushes text deltas through onToken (a proxied
+  // callback over the MessagePort) as they are produced, optionally invoking
+  // allowlisted tools first. Resolves with usage + the tool calls it made.
+  llmStream(request: LlmRequest, onToken: (delta: string) => void): Promise<LlmStreamResult>;
   audit(event: AppletAudit): Promise<void>;
   // Register a validated, scoped stylesheet for this applet's surface. Resolves
   // {ok:false,error} if the CSS is rejected (url/scheme/@import/escape-hatch).

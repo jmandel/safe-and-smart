@@ -252,6 +252,7 @@ const BUILTINS: AppletEntry[] = [
   {label: 'Styled vitals (CSS)', value: `${import.meta.env.BASE_URL}applets/styled-vitals.js`},
   {label: 'Care pathway (SVG)', value: `${import.meta.env.BASE_URL}applets/careplan-diagram.js`},
   {label: 'Order entry (form)', value: `${import.meta.env.BASE_URL}applets/order-entry-form.js`},
+  {label: 'Note summarizer (streaming)', value: `${import.meta.env.BASE_URL}applets/note-summarizer.js`},
 ];
 
 const SAVED_KEY = 'safe-and-smart.applets';

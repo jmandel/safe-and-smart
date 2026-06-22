@@ -226,6 +226,8 @@ interface AppletEntry {
 const BUILTINS: AppletEntry[] = [
   {label: 'Growth Explorer', value: ''},
   {label: 'Medication Reconciliation', value: `${import.meta.env.BASE_URL}applets/med-recon.js`},
+  {label: 'Intrinsic JSX demo', value: `${import.meta.env.BASE_URL}applets/intrinsic-demo.js`},
+  {label: 'FHIR fetch bridge demo', value: `${import.meta.env.BASE_URL}applets/fhir-bridge-demo.js`},
 ];
 
 const SAVED_KEY = 'safe-and-smart.applets';

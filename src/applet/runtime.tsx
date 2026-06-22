@@ -87,13 +87,14 @@ async function start(
   }
 
   const securityProbe = await runSecurityProbe(probeUrl);
-  // Install the OpenAI-compatible LLM bridge AFTER the probe (so the probe still
-  // measures real native-fetch isolation). This gives applets clean, familiar LLM
-  // ergonomics — `fetch('https://llm.internal/v1/chat/completions', …)` or the
-  // real `openai` client pointed at that baseURL — while every call is actually
-  // routed over the MessagePort to the wrapper's brokered llmComplete. No API key
-  // and no real network ever exist in the applet.
-  installLlmBridge(handshake.clinical);
+  // Install the capability fetch bridges AFTER the probe (so the probe still
+  // measures real native-fetch isolation). These give applets clean, familiar
+  // ergonomics — `fetch('https://llm.internal/v1/chat/completions', …)` (or the
+  // real `openai` client at that baseURL) and `fetch('https://fhir.internal/<rel>')`
+  // — while every call is actually routed over the MessagePort to the wrapper's
+  // brokered llmComplete / fhirRequest. No API key, no token, and no real network
+  // ever exist in the applet.
+  installCapabilityBridges(handshake.clinical);
   await handshake.clinical.audit({
     kind: 'security-probe',
     code: 'applet.security-probe',
@@ -115,14 +116,17 @@ async function start(
   );
 }
 
-// Sentinel base the applet's HTTP-style LLM calls target. It is not a real host;
-// it is recognized by the shim and routed to the broker. Use it as the `baseURL`
-// for the openai client, or call it with fetch directly.
+// Sentinel bases the applet's HTTP-style calls target. Neither is a real host;
+// both are recognized by the fetch shim and routed to the broker, giving applets
+// clean, familiar `fetch()` ergonomics with NO token and NO raw resource URL ever
+// present in the sandbox. Use LLM_BASE as the `baseURL` for the openai client, and
+// FHIR_BASE like a normal FHIR endpoint (`fetch('https://fhir.internal/Patient/1')`).
 const LLM_BASE = 'https://llm.internal/';
+const FHIR_BASE = 'https://fhir.internal/';
 
 let bridgeInstalled = false;
 
-function installLlmBridge(clinical: ClinicalCapabilityApi) {
+function installCapabilityBridges(clinical: ClinicalCapabilityApi) {
   if (bridgeInstalled) return;
   bridgeInstalled = true;
   const realFetch = typeof self.fetch === 'function' ? self.fetch.bind(self) : undefined;
@@ -130,11 +134,63 @@ function installLlmBridge(clinical: ClinicalCapabilityApi) {
   self.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     if (url.startsWith(LLM_BASE)) return bridgeChatCompletion(clinical, init, input);
+    if (url.startsWith(FHIR_BASE)) return bridgeFhirRequest(clinical, url, init, input);
     // Everything else stays unavailable — the applet has no ambient network.
     // (Native fetch is already CSP-blocked; we surface a clear error.)
     if (realFetch) return realFetch(input as RequestInfo, init);
     throw new TypeError('Direct network is blocked in the applet sandbox.');
   }) as typeof fetch;
+}
+
+// Translate a `fetch('https://fhir.internal/<relative FHIR URL>')` into a brokered
+// fhirRequest and return the parsed resource as a normal JSON Response. The broker
+// attaches the SMART token, validates/relativizes the URL, and enforces budgets;
+// the applet never sees the credential or the absolute server URL.
+async function bridgeFhirRequest(
+  clinical: ClinicalCapabilityApi,
+  url: string,
+  init: RequestInit | undefined,
+  input: RequestInfo | URL,
+): Promise<Response> {
+  const relative = url.slice(FHIR_BASE.length);
+  const method = (init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase() as
+    | 'GET'
+    | 'POST'
+    | 'PUT'
+    | 'PATCH'
+    | 'DELETE';
+  const headers: Record<string, string> = {};
+  if (init?.headers) new Headers(init.headers).forEach((value, key) => (headers[key] = value));
+  const rawBody =
+    init?.body != null
+      ? typeof init.body === 'string'
+        ? init.body
+        : new TextDecoder().decode(init.body as ArrayBuffer)
+      : input instanceof Request
+        ? await input.text().catch(() => '')
+        : '';
+
+  try {
+    const resource = await clinical.fhirRequest({
+      url: relative,
+      init: {method, headers, body: rawBody ? rawBody : undefined},
+    });
+    return new Response(JSON.stringify(resource), {
+      status: 200,
+      headers: {'content-type': 'application/fhir+json'},
+    });
+  } catch (error) {
+    // Surface broker rejections as an HTTP-shaped error the applet can handle,
+    // mirroring how a real FHIR server would respond with an OperationOutcome.
+    const outcome = {
+      resourceType: 'OperationOutcome',
+      issue: [{severity: 'error', code: 'processing', diagnostics: (error as Error).message}],
+    };
+    return new Response(JSON.stringify(outcome), {
+      status: 400,
+      headers: {'content-type': 'application/fhir+json'},
+    });
+  }
 }
 
 // Translate an OpenAI /v1/chat/completions request into a brokered llmComplete

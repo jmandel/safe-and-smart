@@ -52,11 +52,29 @@ Vega chart, controls, …).
 
 Consequences:
 - The applet uses hooks, state, composition, effects, event handlers — all normal.
-- The **security boundary is the host component catalog**, not a JSON schema. The
-  applet can only cause UI that the wrapper's components can express.
+  It is the **full React programming model**, not a JSON widget DSL.
+- But "full React" does NOT mean "arbitrary DOM." The host realizes **only element
+  names present in `remoteComponentMap`** (ui-card, ui-text, ui-table, ui-vega, …).
+  Element names not in the map — `img`, `a`, `iframe`, `div`, raw SVG — are
+  **dropped by `RemoteRootRenderer`**, never reaching the real DOM. Verified: a
+  hostile applet rendering `<img src=…>` / `<a href=…>` / `<iframe>` to an external
+  host produced **zero network requests and zero rendered elements**. So the
+  **vetted component catalog is the rendering boundary**, and it has no `src`/`href`
+  sink (every prop is coerced to text; the Vega spec is sanitized to reject any
+  url/href/src/external loader). This is why rendered-channel exfiltration
+  (img beacons, link/form/iframe) is not available to the applet — `connect-src
+  'none'` covers fetch/XHR/WebSocket; the catalog covers the rendered surfaces.
+  (A separate, lower-assurance "direct-DOM iframe" tier — arbitrary elements — is
+  documented as a higher-governance option, but is NOT the default and NOT this
+  implementation.)
+- **Defense-in-depth:** the trusted host page also ships a CSP that locks the
+  rendered-channel sinks (`img-src 'self' data: blob:`, `media-src/object-src
+  'none'`, `form-action 'none'`, `base-uri 'none'`) so an off-origin beacon fails
+  even if a URL-bearing component is added later or a host dependency is
+  compromised. `connect-src`/`frame-src` stay broad (trusted broker + launcher);
+  `script-src` keeps `'unsafe-eval'` for Vega's expression compiler.
 - Libraries that manipulate `window`/`document`/CSSOM/canvas/portals directly need
-  a host adapter; pure logic/state libraries work as-is (see
-  `capabilities.md`).
+  a host adapter; pure logic/state libraries work as-is (see `capabilities.md`).
 
 ## What this defends — and what it does not
 

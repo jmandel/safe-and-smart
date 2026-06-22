@@ -11,6 +11,67 @@ If you are reviewing this, the fastest high-value pass is: (1) confirm the
 assumptions in §4 hold in your target browsers, (2) audit the trusted computing
 base in §3, (3) try to violate the claims in §2 with a hostile applet.
 
+## 0. Design evolution since the original spike (read this first)
+
+This started as a research spike and has changed in ways a reviewer will not have
+seen documented elsewhere. **None of the changes alter the core security model**
+(untrusted applet in a worker → Remote DOM → vetted host component catalog;
+token-less broker; opaque-origin launcher). Several are security-relevant; here
+they are, grouped by effect, so you can calibrate quickly.
+
+**Neutral to the security model (build / tooling / ergonomics):**
+- **Bundler: Vite → Bun.** The project now builds with a single `build.ts` (Bun);
+  Vite and Vitest were removed (smaller build-tooling surface; unit tests run under
+  `bun test`). The bundler is *not* in the runtime TCB, but it must preserve two
+  invariants the model relies on (A8): the applet worker ships as **one
+  self-contained classic (IIFE) script** — a *module* worker cannot load from a
+  `blob:` URL in an opaque origin, so this is load-bearing — and the trust tiers
+  stay in **separate bundles** (token/host code never bundled into the launcher or
+  worker). `import.meta.env` values are inlined at build via Bun `define`.
+- **Distinct entry points / clean URLs** (`/`, `/run`, `/fhir`) plus an applet
+  picker. The picker's "remembered applets" list lives in the **wrapper origin's**
+  `localStorage` — trusted-origin storage, **not** the applet sandbox (which still
+  has none; C4 is unaffected).
+- **Removed `Clear-Site-Data` from the launcher** (it cost seconds per load on real
+  profiles). It was defense-in-depth wiping launcher-origin storage; it is **not**
+  load-bearing, because the launcher is an opaque origin that cannot persist
+  storage anyway (C4 rests on the opaque origin per A2). Flagged so you don't read
+  its absence as a dropped control.
+
+**Strengthened:**
+- **A host-page CSP was added** (defense-in-depth for C3): the trusted shell now
+  locks `img-src 'self' data: blob:`, `media-src`/`object-src 'none'`,
+  `form-action 'none'`, `base-uri 'none'`, so a rendered-channel beacon fails even
+  if a URL-bearing component is added later or a host dependency is compromised. It
+  carries `script-src 'unsafe-eval'` for Vega's expression compiler (see §6).
+- **Real SMART standalone launch** (`/fhir`): the wrapper performs the OAuth itself
+  and holds the token; the applet still receives only brokered capabilities (C1).
+  Clinician/encounter identity now comes from the launch (`openid`/`fhirUser`),
+  replacing hardcoded demo identities that existed in the original spike.
+
+**New capability, with a bounded security argument:**
+- **Applets are fetched from a URL at runtime.** The original built-in inlined
+  worker was removed; the launcher always runs **wrapper-fetched** applet source as
+  a classic blob worker. This is what lets the wrapper host third-party /
+  LLM-authored / externally-hosted applets. It does **not** change the threat
+  model: applets are untrusted by assumption regardless of origin, and the
+  **trusted wrapper** performs the fetch (the opaque sandbox has `connect-src
+  'none'` and can never fetch code — its own or anyone's). *Provenance* (knowing
+  which URL ran: optional hash-pin / allowlist / audit) is separate from
+  *containment* (what the code can do, which does not depend on provenance).
+  **Review URL-loaded and bundled applets identically.**
+
+**Deployment posture (affects §4 assumptions, not §2 claims):**
+- The public demo is **single-origin on GitHub Pages**: wrapper and launcher share
+  one origin, and Pages cannot set response headers, so the launcher CSP is
+  delivered as a `<meta http-equiv>` tag rather than a header (we verified the
+  meta-CSP `connect-src 'none'` still propagates to the blob worker; Pages also
+  sends `Access-Control-Allow-Origin: *`, which is why the opaque iframe can load
+  its launcher script). This is a **weaker posture** than the recommended
+  production setup — two registrable domains + server-set headers + a managed
+  egress proxy — and is called out in §6. The same source builds either posture via
+  `VITE_BASE` / `VITE_SANDBOX_ORIGIN`.
+
 ## 1. System under review (one design, one tier)
 
 A single **trusted wrapper** (the "shell", a normal web origin) performs the

@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import vegaEmbed, {type VisualizationSpec} from 'vega-embed';
+import {expressionInterpreter} from 'vega-interpreter';
 import {
   RemoteFragmentRenderer,
   createRemoteComponentRenderer,
@@ -308,6 +309,7 @@ const VegaRenderer = createRemoteComponentRenderer(function VegaRenderer({
       ast: true,
       tooltip: true,
       loader: REJECTING_VEGA_LOADER,
+      expr: expressionInterpreter, // CSP-safe: no Function/eval (paired with ast:true above)
     })
       .then((result) => {
         if (disposed) result.finalize();

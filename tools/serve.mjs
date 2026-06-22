@@ -15,11 +15,11 @@ const HOST_CSP = [
   "base-uri 'none'",
   "object-src 'none'",
   "form-action 'none'",
-  "img-src 'self' data: blob:",
+  "img-src data: blob:",
   "media-src 'none'",
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-eval'",
+  "script-src 'self'",
   "worker-src 'self' blob:",
   "connect-src 'self' https: http:",
   "frame-src 'self' http: https: blob:",
@@ -54,7 +54,7 @@ function headers(kind, pathname) {
       // exfiltration sinks would live — lock them down even if a component
       // regresses. connect-src/frame-src stay broad: the trusted broker talks to
       // arbitrary FHIR/LLM servers and frames the launcher (not applet-controlled
-      // sinks). 'unsafe-eval' is required by Vega's expression compiler.
+      // sinks). Vega uses its expression interpreter (vega-interpreter), so no 'unsafe-eval'.
       'Content-Security-Policy': HOST_CSP,
     };
   }

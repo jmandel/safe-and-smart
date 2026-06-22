@@ -190,31 +190,159 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
 }
 
 // The wrapper's applet registry/picker. Every entry runs in the same sandbox with
-// identical isolation; switching is just choosing a different bundle. The built-in
-// entry uses the inlined worker; the others are standalone bundles loaded at
-// runtime via ?applet=<url> (here same-origin; any CORS-enabled URL works).
-const REGISTRY = [
-  {label: 'Growth Explorer', value: ''}, // '' → wrapper loads the default growth bundle
+// identical isolation; switching is just choosing a different bundle (value is the
+// ?applet URL, '' = the default growth bundle). Built-ins ship with the wrapper;
+// user-added applets are any CORS-enabled URL, optionally remembered in this
+// browser's localStorage (the wrapper origin can use storage; the applet cannot).
+interface AppletEntry {
+  label: string;
+  value: string;
+}
+
+const BUILTINS: AppletEntry[] = [
+  {label: 'Growth Explorer', value: ''},
   {label: 'Medication Reconciliation', value: `${import.meta.env.BASE_URL}applets/med-recon.js`},
 ];
 
+const SAVED_KEY = 'safe-and-smart.applets';
+
+function loadSaved(): AppletEntry[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SAVED_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((e) => e && typeof e.value === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+function persistSaved(list: AppletEntry[]) {
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify(list));
+  } catch {
+    // storage may be unavailable; remembering is best-effort
+  }
+}
+function shortLabel(url: string): string {
+  try {
+    const u = new URL(url, window.location.href);
+    return (u.pathname.split('/').filter(Boolean).pop() || u.host) + '';
+  } catch {
+    return url.slice(0, 40);
+  }
+}
+
+// Navigate (reload) to run the chosen applet on the current page (/run or /fhir).
+function runApplet(value: string) {
+  window.location.search = value ? `?applet=${encodeURIComponent(value)}` : '';
+}
+
 function AppletPicker() {
   const current = new URLSearchParams(window.location.search).get('applet') ?? '';
+  const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [saved, setSaved] = useState<AppletEntry[]>(loadSaved);
+  const [url, setUrl] = useState('');
+  const [label, setLabel] = useState('');
+  const [remember, setRemember] = useState(true);
+
+  const known = [...BUILTINS, ...saved];
+  const currentLabel =
+    known.find((e) => e.value === current)?.label ?? (current ? shortLabel(current) : BUILTINS[0].label);
+
+  function submitAdd() {
+    const value = url.trim();
+    if (!value) return;
+    if (remember) {
+      const next = [...saved.filter((s) => s.value !== value), {label: label.trim() || shortLabel(value), value}];
+      persistSaved(next);
+    }
+    runApplet(value);
+  }
+  function removeSaved(value: string) {
+    const next = saved.filter((s) => s.value !== value);
+    setSaved(next);
+    persistSaved(next);
+  }
+
   return (
-    <select
-      className="shell-pill"
-      aria-label="Choose applet"
-      value={current}
-      onChange={(event) => {
-        const value = event.target.value;
-        window.location.search = value ? `?applet=${encodeURIComponent(value)}` : '';
-      }}
-    >
-      {REGISTRY.map((entry) => (
-        <option key={entry.value} value={entry.value}>
-          {entry.label}
-        </option>
-      ))}
-    </select>
+    <div className="picker">
+      <button className="shell-pill picker-button" onClick={() => setOpen((o) => !o)} aria-haspopup="menu">
+        <span className="picker-current">{currentLabel}</span> ▾
+      </button>
+
+      {open ? (
+        <>
+          <div className="picker-backdrop" onClick={() => setOpen(false)} />
+          <div className="picker-menu" role="menu">
+            <div className="picker-group">Applets</div>
+            {BUILTINS.map((e) => (
+              <button key={e.label} className="picker-item" role="menuitem" onClick={() => runApplet(e.value)}>
+                <span className="picker-check">{e.value === current ? '✓' : ''}</span>
+                {e.label}
+              </button>
+            ))}
+            {saved.length > 0 ? <div className="picker-group">Saved in this browser</div> : null}
+            {saved.map((e) => (
+              <div key={e.value} className="picker-row">
+                <button className="picker-item" role="menuitem" onClick={() => runApplet(e.value)}>
+                  <span className="picker-check">{e.value === current ? '✓' : ''}</span>
+                  {e.label}
+                </button>
+                <button className="picker-x" title="Forget" onClick={() => removeSaved(e.value)}>
+                  ×
+                </button>
+              </div>
+            ))}
+            <button
+              className="picker-add"
+              onClick={() => {
+                setOpen(false);
+                setUrl('');
+                setLabel('');
+                setRemember(true);
+                setAdding(true);
+              }}
+            >
+              + Add applet by URL…
+            </button>
+          </div>
+        </>
+      ) : null}
+
+      {adding ? (
+        <div className="modal-overlay" onClick={() => setAdding(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Add an applet</h3>
+            <p className="modal-sub">
+              Any CORS-enabled bundle URL. The wrapper fetches it and runs it in the same sandbox —
+              no token, no network, no DOM.
+            </p>
+            <label className="modal-field">
+              Applet bundle URL
+              <input
+                autoFocus
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://example.com/applet.js"
+                onKeyDown={(e) => e.key === 'Enter' && submitAdd()}
+              />
+            </label>
+            <label className="modal-field">
+              Label (optional)
+              <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="My applet" />
+            </label>
+            <label className="modal-check">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              Remember in this browser
+            </label>
+            <div className="modal-actions">
+              <button onClick={() => setAdding(false)}>Cancel</button>
+              <button className="modal-primary" disabled={!url.trim()} onClick={submitAdd}>
+                Run applet
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

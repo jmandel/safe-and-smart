@@ -134,3 +134,40 @@ select.shell-pill option { color: #10223d; background: white; }
 .landing-entry.accent .landing-cta { color: #6fe0c0; }
 .landing-foot { margin-top: 36px; text-align: center; }
 .landing-foot p { font-size: 12.5px; color: #8595ab; max-width: 640px; margin: 0 auto; line-height: 1.5; }
+
+/* ---- Applet picker (custom dropdown + add-applet modal) ---- */
+.picker { position: relative; }
+.picker-button { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; max-width: 280px; }
+.picker-current { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.picker-backdrop { position: fixed; inset: 0; z-index: 40; }
+.picker-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 41; min-width: 260px;
+  background: white; color: #10223d; border: 1px solid #d7e0eb; border-radius: 12px;
+  box-shadow: 0 12px 32px rgb(10 25 48 / 22%); padding: 6px; display: grid; gap: 1px;
+}
+.picker-group { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #8595ab; padding: 8px 10px 4px; }
+.picker-row { display: flex; align-items: center; }
+.picker-item {
+  flex: 1; display: flex; align-items: center; gap: 6px; text-align: left; border: 0; background: transparent;
+  color: #10223d; font: inherit; font-size: 13px; padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.picker-item:hover { background: #eef2f7; }
+.picker-check { width: 14px; color: #1b7d68; font-weight: 800; flex-shrink: 0; }
+.picker-x { border: 0; background: transparent; color: #9aa7b8; font-size: 16px; cursor: pointer; padding: 0 8px; border-radius: 8px; }
+.picker-x:hover { background: #fdeaea; color: #b3372f; }
+.picker-add { margin-top: 4px; border: 0; border-top: 1px solid #eef2f7; background: transparent; color: #1b6a8a; font: inherit; font-size: 13px; font-weight: 600; text-align: left; padding: 9px 10px; cursor: pointer; border-radius: 8px; }
+.picker-add:hover { background: #eef6fb; }
+
+.modal-overlay { position: fixed; inset: 0; z-index: 60; background: rgb(10 25 48 / 45%); display: grid; place-items: center; padding: 20px; }
+.modal { background: white; color: #10223d; border-radius: 16px; padding: 22px; width: min(440px, 100%); box-shadow: 0 20px 60px rgb(10 25 48 / 35%); }
+.modal h3 { margin: 0 0 6px; font-size: 18px; }
+.modal-sub { margin: 0 0 16px; font-size: 13px; line-height: 1.5; color: #52617a; }
+.modal-field { display: grid; gap: 5px; font-size: 12px; font-weight: 600; color: #4c5e74; margin-bottom: 12px; }
+.modal-field input { font: inherit; font-weight: 400; padding: 9px 11px; border: 1px solid #c7d2e0; border-radius: 9px; color: #10223d; }
+.modal-field input:focus { outline: 2px solid #9edac8; border-color: #56c7a7; }
+.modal-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #44566f; margin-bottom: 18px; cursor: pointer; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.modal-actions button { font: inherit; font-weight: 600; padding: 9px 16px; border-radius: 9px; cursor: pointer; border: 1px solid #c7d2e0; background: white; color: #44566f; }
+.modal-actions .modal-primary { background: #176a59; color: white; border-color: #176a59; }
+.modal-actions .modal-primary:disabled { opacity: .5; cursor: not-allowed; }

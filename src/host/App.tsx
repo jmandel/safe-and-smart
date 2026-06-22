@@ -9,12 +9,21 @@ import {
 import {ClinicalBroker, type AuditRecord} from './broker/clinical-broker';
 import {remoteComponentMap} from './components/remote-components';
 import {AppletErrorBoundary} from './AppletErrorBoundary';
-import {loadAppletBundle} from './load-applet';
+import {loadAppletBundle, sha256Hex} from './load-applet';
 import {guardConnection} from './mutation-gateway';
 import {createSafeDomFirewall} from './safe-dom-firewall';
 import {ShadowSurface} from './ShadowSurface';
 
-export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit} = {}) {
+export function App({
+  smartInit,
+  appletSourceOverride,
+}: {
+  smartInit?: import('./smart-launch').SmartInit;
+  // In-memory applet source (e.g. compiled in the browser authoring page). When
+  // present it runs through the identical sandbox/launcher/firewall path instead
+  // of being fetched from a URL.
+  appletSourceOverride?: string;
+} = {}) {
   const receiver = useMemo(() => new RemoteReceiver({retain, release}), []);
   const broker = useMemo(() => new ClinicalBroker(smartInit), [smartInit]);
   const nonce = useMemo(() => crypto.randomUUID(), []);
@@ -96,11 +105,16 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
     const appletUrl =
       new URLSearchParams(window.location.search).get('applet') ??
       `${import.meta.env.BASE_URL}applets/growth-remote.js`;
-    let appletIdentity = {url: appletUrl, sha256: ''};
-    const appletSourcePromise: Promise<string> = loadAppletBundle(appletUrl).then((loaded) => {
-      appletIdentity = {url: loaded.url, sha256: loaded.sha256};
-      return loaded.source;
-    });
+    let appletIdentity = {url: appletSourceOverride ? 'authored://in-memory' : appletUrl, sha256: ''};
+    const appletSourcePromise: Promise<string> = appletSourceOverride
+      ? sha256Hex(appletSourceOverride).then((sha256) => {
+          appletIdentity = {url: 'authored://in-memory', sha256};
+          return appletSourceOverride;
+        })
+      : loadAppletBundle(appletUrl).then((loaded) => {
+          appletIdentity = {url: loaded.url, sha256: loaded.sha256};
+          return loaded.source;
+        });
 
     const transfer = async () => {
       if (transferred || !element.contentWindow) return;
@@ -141,7 +155,7 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
       thread.close();
       channel.port1.close();
     };
-  }, [broker, nonce, receiver]);
+  }, [broker, nonce, receiver, appletSourceOverride]);
 
   return (
     <div className="shell">

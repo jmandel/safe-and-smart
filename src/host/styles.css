@@ -180,3 +180,15 @@ select.shell-pill option { color: #10223d; background: white; }
 .applet-error strong { font-size: 15px; }
 .applet-error p { margin: 0; font-size: 13px; font-family: ui-monospace, monospace; color: #9b4444; word-break: break-word; }
 .applet-error-reload { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 9px; border: 1px solid #176a59; background: #176a59; color: white; cursor: pointer; }
+
+/* Browser authoring page (/author) */
+.authoring { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: calc(100vh - 32px); padding: 16px; box-sizing: border-box; }
+.authoring-editor { display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.authoring-toolbar { display: flex; align-items: center; gap: 12px; }
+.authoring-run { padding: 6px 14px; border-radius: 6px; border: 0; background: #2563eb; color: #fff; cursor: pointer; }
+.authoring-run:disabled { opacity: .6; cursor: default; }
+.authoring-hash { font: 12px ui-monospace, monospace; color: #64748b; }
+.authoring-textarea { flex: 1; min-height: 0; font: 13px ui-monospace, SFMono-Regular, monospace; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; resize: none; tab-size: 2; }
+.authoring-diagnostics { margin: 0; padding: 8px 12px; list-style: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; font: 12px ui-monospace, monospace; max-height: 140px; overflow: auto; }
+.authoring-preview { border: 1px solid #e2e8f0; border-radius: 8px; overflow: auto; background: #f8fafc; padding: 12px; }
+.authoring-placeholder { color: #64748b; padding: 24px; text-align: center; }

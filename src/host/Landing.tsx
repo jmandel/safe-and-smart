@@ -36,6 +36,13 @@ const ENTRIES: Entry[] = [
     href: asset('run/?applet=' + encodeURIComponent(asset('applets/med-recon.js'))),
     cta: 'Open Med Reconciliation →',
   },
+  {
+    title: 'Author in the browser',
+    blurb:
+      'Write a TSX applet, compile it in your browser (no server, no install), and run the self-contained, hash-addressed artifact in the very same locked sandbox.',
+    href: asset('author/'),
+    cta: 'Open the authoring playground →',
+  },
 ];
 
 export function Landing() {

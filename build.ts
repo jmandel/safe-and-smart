@@ -41,7 +41,7 @@ mkdirSync('dist/applets', {recursive: true});
 
 // 1. HTML entries (landing, wrapper runtime, sandbox launcher) + their JS/CSS.
 const html = await Bun.build({
-  entrypoints: ['index.html', 'run/index.html', 'fhir/index.html', 'sandbox.html'],
+  entrypoints: ['index.html', 'run/index.html', 'fhir/index.html', 'author/index.html', 'sandbox.html'],
   outdir: 'dist',
   target: 'browser',
   minify,
@@ -77,5 +77,21 @@ for (const applet of APPLETS) {
   }
   writeFileSync(`dist/applets/${applet.out}`, await result.outputs[0].text());
 }
+
+// 3. Authoring SDK — prebuilt classic-worker IIFE that the browser authoring page
+//    prepends to compiled author code (provides React + ui-* + runApplet globals).
+mkdirSync('dist/applets/_sdk', {recursive: true});
+const sdk = await Bun.build({
+  entrypoints: ['src/applet/authoring-sdk.ts'],
+  target: 'browser',
+  format: 'iife',
+  minify,
+  define,
+});
+if (!sdk.success) {
+  for (const m of sdk.logs) console.error(m);
+  process.exit(1);
+}
+writeFileSync('dist/applets/_sdk/authoring-sdk.js', await sdk.outputs[0].text());
 
 console.log(`Built with Bun -> dist/ (base ${BASE}).`);

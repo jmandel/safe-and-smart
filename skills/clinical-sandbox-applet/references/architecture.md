@@ -54,19 +54,22 @@ Consequences:
 - The applet uses hooks, state, composition, effects, event handlers — all normal.
   It is the **full React programming model**, not a JSON widget DSL.
 - But "full React" does NOT mean "arbitrary DOM." The host realizes **only element
-  names present in `remoteComponentMap`** (ui-card, ui-text, ui-table, ui-vega, …).
-  Element names not in the map — `img`, `a`, `iframe`, `div`, raw SVG — are
-  **dropped by `RemoteRootRenderer`**, never reaching the real DOM. Verified: a
-  hostile applet rendering `<img src=…>` / `<a href=…>` / `<iframe>` to an external
-  host produced **zero network requests and zero rendered elements**. So the
-  **vetted component catalog is the rendering boundary**, and it has no `src`/`href`
-  sink (every prop is coerced to text; the Vega spec is sanitized to reject any
-  url/href/src/external loader). This is why rendered-channel exfiltration
-  (img beacons, link/form/iframe) is not available to the applet — `connect-src
-  'none'` covers fetch/XHR/WebSocket; the catalog covers the rendered surfaces.
-  (A separate, lower-assurance "direct-DOM iframe" tier — arbitrary elements — is
-  documented as a higher-governance option, but is NOT the default and NOT this
-  implementation.)
+  names present in `remoteComponentMap`** (ui-card, ui-text, ui-table, ui-vega, …),
+  and those renderers coerce every prop to text — there is no `src`/`href` sink
+  (the Vega spec is sanitized to reject any url/href/src/external loader). So the
+  **vetted component catalog is the rendering boundary**, and rendered-channel
+  exfiltration (img beacons, link/form/iframe) is not available to the applet:
+  `connect-src 'none'` covers fetch/XHR/WebSocket; the catalog covers the rendered
+  surfaces. (A separate, lower-assurance "direct-DOM iframe" tier — arbitrary
+  elements — is a documented higher-governance option, NOT this implementation.)
+- **Failure contract for a disallowed element (verified against the code):** an
+  element name not in the map is NOT silently stripped. `renderRemoteNode` throws
+  `No component found for remote element: <name>`. With no error boundary around
+  `RemoteRootRenderer`, that throw unmounts the **whole host render** — the bad
+  element never reaches the DOM (so no exfil), but the applet's UI (and currently
+  the wrapper chrome) fails closed entirely. A production wrapper should wrap the
+  renderer in an **error boundary** so one unsupported element degrades to a
+  per-applet error instead of blanking the wrapper.
 - **Defense-in-depth:** the trusted host page also ships a CSP that locks the
   rendered-channel sinks (`img-src 'self' data: blob:`, `media-src/object-src
   'none'`, `form-action 'none'`, `base-uri 'none'`) so an off-origin beacon fails

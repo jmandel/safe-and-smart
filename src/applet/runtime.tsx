@@ -96,6 +96,7 @@ async function start(
   installLlmBridge(handshake.clinical);
   await handshake.clinical.audit({
     kind: 'security-probe',
+    code: 'applet.security-probe',
     message: `DOM=${securityProbe.directDomUnavailable}; network=${securityProbe.directNetworkBlocked}; storage=${securityProbe.persistentStorageBlocked}`,
     detail: securityProbe.details,
   });

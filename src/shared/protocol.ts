@@ -42,8 +42,21 @@ export interface LlmResponse {
   usage: {inputTokens: number; outputTokens: number};
 }
 
+// Closed vocabulary of audit event codes an applet may emit. The host records the
+// code as the authoritative, machine-readable event; the free-text `message` is
+// retained only as a bounded, sanitized human label (never trusted, never parsed).
+export const APPLET_AUDIT_CODES = [
+  'applet.started',
+  'applet.security-probe',
+  'applet.user-action',
+  'applet.review-accepted',
+  'applet.review-dismissed',
+  'applet.error',
+] as const;
+
 export const AppletAuditSchema = z.object({
   kind: z.enum(['lifecycle', 'security-probe', 'application']),
+  code: z.enum(APPLET_AUDIT_CODES).optional(),
   message: z.string().min(1).max(2_000),
   detail: z.record(z.string(), z.unknown()).optional(),
 });

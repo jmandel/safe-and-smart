@@ -200,6 +200,7 @@ export function App({clinical, context, securityProbe}: AppletProps) {
                           setResolved((r) => ({...r, [d.medication]: 'accepted'}));
                           void clinical.audit({
                             kind: 'application',
+                            code: 'applet.review-accepted',
                             message: `med-recon: accepted proposed action for ${d.medication}`,
                           });
                         }}
@@ -213,6 +214,7 @@ export function App({clinical, context, securityProbe}: AppletProps) {
                           setResolved((r) => ({...r, [d.medication]: 'dismissed'}));
                           void clinical.audit({
                             kind: 'application',
+                            code: 'applet.review-dismissed',
                             message: `med-recon: dismissed discrepancy for ${d.medication}`,
                           });
                         }}

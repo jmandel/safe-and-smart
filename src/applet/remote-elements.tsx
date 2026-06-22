@@ -72,6 +72,8 @@ export const TAG_TO_COMPONENT: Record<string, ComponentType<any>> = {};
 for (const tag of Object.keys(SAFE_DOM_SCHEMA)) TAG_TO_COMPONENT[tag] = bind(tag);
 
 // Named bindings applets import (same instances as TAG_TO_COMPONENT).
+export const Box = TAG_TO_COMPONENT['ui-box']!;
+export const Inline = TAG_TO_COMPONENT['ui-inline']!;
 export const Stack = TAG_TO_COMPONENT['ui-stack']!;
 export const Grid = TAG_TO_COMPONENT['ui-grid']!;
 export const Card = TAG_TO_COMPONENT['ui-card']!;

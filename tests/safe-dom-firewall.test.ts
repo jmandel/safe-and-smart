@@ -78,6 +78,33 @@ describe('createSafeDomFirewall', () => {
     ).toThrow(/may not contain children/);
   });
 
+  it('validates styleable props (style object + className token list)', () => {
+    const fw = createSafeDomFirewall();
+    // safe style + className pass
+    expect(() =>
+      fw.validateRecords([
+        insert(el('a', 'ui-box', {properties: {style: {color: 'red', padding: 8}, className: 'tile warn'}})),
+      ]),
+    ).not.toThrow();
+    // url() in a style value is rejected
+    expect(() =>
+      fw.validateRecords([insert(el('b', 'ui-box', {properties: {style: {backgroundImage: 'url(http://evil)'}}}))]),
+    ).toThrow(/style on <ui-box> rejected/);
+    // bad className token rejected
+    expect(() =>
+      fw.validateRecords([insert(el('c', 'ui-box', {properties: {className: 'ok bad}token'}}))]),
+    ).toThrow(/className token/);
+    // style/className still gated by the property allowlist on non-styleable tags
+    expect(() =>
+      fw.validateRecords([insert(el('d', 'ui-stat', {properties: {style: {color: 'red'}}}))]),
+    ).toThrow(/property "style" is not allowed/);
+    // UPDATE_PROPERTY style is validated against the inserted tag
+    fw.validateRecords([insert(el('e', 'ui-box'))]);
+    expect(() => fw.validateRecords([[UPDATE_PROPERTY, 'e', 'style', {background: 'url(//evil)'}, PROP]])).toThrow(
+      /style on <ui-box> rejected/,
+    );
+  });
+
   it('enforces the text length quota', () => {
     const fw = createSafeDomFirewall();
     const huge = 'x'.repeat(100_001);

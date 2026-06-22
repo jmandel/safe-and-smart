@@ -8,7 +8,7 @@
 //
 // Bump SAFE_DOM_SCHEMA_VERSION on any change; the handshake can use it to refuse
 // an applet built against an incompatible surface.
-export const SAFE_DOM_SCHEMA_VERSION = '1.1.0';
+export const SAFE_DOM_SCHEMA_VERSION = '1.2.0';
 
 export type SafePropType = 'string' | 'number' | 'boolean' | 'array' | 'object';
 
@@ -27,7 +27,25 @@ export interface SafeElementSchema {
 // applet-author props. They must be accepted by the firewall.
 export const STRUCTURAL_TAGS = ['remote-root', 'remote-fragment'] as const;
 
+// Properties that carry author styling and are validated by VALUE (not just by
+// name): `style` is run through validateStyleObject, `className` through a token
+// check. The firewall enforces this; renderers apply the validated result.
+export const STYLEABLE_PROPERTIES = ['style', 'className'] as const;
+
 export const SAFE_DOM_SCHEMA: Readonly<Record<string, SafeElementSchema>> = {
+  // Styleable layout/text primitives: the honest escape hatch from enumerated
+  // props. They accept a validated `style` object and `className` (resolved against
+  // an applet-registered, validated, scoped stylesheet).
+  'ui-box': {
+    properties: {style: 'object', className: 'string'},
+    events: [],
+    children: true,
+  },
+  'ui-inline': {
+    properties: {style: 'object', className: 'string'},
+    events: [],
+    children: true,
+  },
   'ui-stack': {
     properties: {gap: 'number', direction: 'string', align: 'string', justify: 'string'},
     events: [],

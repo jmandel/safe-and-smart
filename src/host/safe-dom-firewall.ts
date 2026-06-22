@@ -11,6 +11,38 @@ import {
   isStructuralTag,
   type SafeElementSchema,
 } from '../shared/safe-dom-schema';
+import {validateStyleObject, CssViolation} from './css-validator';
+
+// Styled props are validated by VALUE here, not just by name. `style` runs through
+// the CSS value validator; `className` must be a bounded list of safe tokens.
+const CLASSNAME_TOKEN = /^[A-Za-z0-9_-]+$/;
+
+function validateStyleableProp(tag: string, property: string, value: unknown): void {
+  if (property === 'style') {
+    if (value == null) return;
+    if (typeof value !== 'object') {
+      throw new SafeDomViolation(`style on <${tag}> must be an object.`);
+    }
+    try {
+      validateStyleObject(value as Record<string, unknown>);
+    } catch (error) {
+      if (error instanceof CssViolation) {
+        throw new SafeDomViolation(`style on <${tag}> rejected: ${error.message}`);
+      }
+      throw error;
+    }
+  } else if (property === 'className') {
+    if (value == null) return;
+    if (typeof value !== 'string' || value.length > 2_000) {
+      throw new SafeDomViolation(`className on <${tag}> must be a short string.`);
+    }
+    for (const token of value.split(/\s+/).filter(Boolean)) {
+      if (!CLASSNAME_TOKEN.test(token)) {
+        throw new SafeDomViolation(`className token "${token}" on <${tag}> is not allowed.`);
+      }
+    }
+  }
+}
 
 // Mutation record + node-kind constants (mirror @remote-dom/core; kept local so
 // the firewall has no structural dependency on the library internals).
@@ -70,11 +102,12 @@ export function createSafeDomFirewall(): SafeDomFirewall {
     }
 
     // Properties: only schema-declared names (structural elements declare none).
-    for (const name of Object.keys(node.properties ?? {})) {
+    for (const [name, value] of Object.entries(node.properties ?? {})) {
       if (ALWAYS_ALLOWED_PROPERTIES.has(name)) continue;
       if (!schema || !(name in schema.properties)) {
         throw new SafeDomViolation(`property "${name}" is not allowed on <${tag}>.`);
       }
+      validateStyleableProp(tag, name, value);
     }
     // Attributes are not part of the Safe DOM surface at all — reject any.
     if (node.attributes && Object.keys(node.attributes).length > 0) {
@@ -144,6 +177,7 @@ export function createSafeDomFirewall(): SafeDomFirewall {
         if (!schema || !(property in schema.properties)) {
           throw new SafeDomViolation(`property "${property}" is not allowed on <${tag}>.`);
         }
+        validateStyleableProp(tag, property, record[3]);
         return;
       }
       case MUTATION_TYPE_UPDATE_TEXT: {

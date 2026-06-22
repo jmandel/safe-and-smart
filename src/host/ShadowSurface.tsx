@@ -37,23 +37,45 @@ function adoptDocumentStyles(root: ShadowRoot): void {
   }
 }
 
-export function ShadowSurface({children}: {children: React.ReactNode}) {
+export function ShadowSurface({
+  children,
+  appletStyles = [],
+}: {
+  children: React.ReactNode;
+  // Validated applet CSS (from clinical.registerStylesheet). Installed into the
+  // shadow root, so it is scoped to the applet surface and cannot restyle the
+  // trusted wrapper chrome outside it.
+  appletStyles?: readonly string[];
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [mount, setMount] = useState<HTMLElement>();
+  const styleElement = useRef<HTMLStyleElement>();
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     const root = host.shadowRoot ?? host.attachShadow({mode: 'open'});
     adoptDocumentStyles(root);
+    const style = document.createElement('style');
+    style.dataset.appletStyles = 'true';
+    root.append(style);
+    styleElement.current = style;
     const container = document.createElement('div');
     container.className = 'applet-shadow-root';
     root.append(container);
     setMount(container);
     return () => {
       container.remove();
+      style.remove();
     };
   }, []);
+
+  // Applet stylesheets are validated host-side (CSS validator) before they arrive;
+  // we concatenate them into the shadow-scoped <style>. Scoping is the shadow
+  // boundary — these rules cannot reach the wrapper chrome.
+  useEffect(() => {
+    if (styleElement.current) styleElement.current.textContent = appletStyles.join('\n');
+  }, [appletStyles]);
 
   return (
     <div ref={hostRef} className="applet-shadow-host">

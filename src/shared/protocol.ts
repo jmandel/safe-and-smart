@@ -63,6 +63,20 @@ export const AppletAuditSchema = z.object({
 
 export type AppletAudit = z.infer<typeof AppletAuditSchema>;
 
+// An applet-supplied stylesheet (CSS Modules / hand-written CSS). The host
+// validates it (no url()/scheme/@import/escape-hatch) and installs it, scoped, into
+// the applet's ShadowRoot surface. Bounded so a stylesheet can't be a memory DoS.
+export const StylesheetSchema = z.object({
+  css: z.string().min(1).max(256_000),
+});
+
+export type Stylesheet = z.infer<typeof StylesheetSchema>;
+
+export interface StylesheetResult {
+  ok: boolean;
+  error?: string;
+}
+
 export interface ClinicalContext {
   user: {
     id: string;
@@ -87,6 +101,9 @@ export interface ClinicalCapabilityApi {
   fhirRequest(request: FhirRequest): Promise<unknown>;
   llmComplete(request: LlmRequest): Promise<LlmResponse>;
   audit(event: AppletAudit): Promise<void>;
+  // Register a validated, scoped stylesheet for this applet's surface. Resolves
+  // {ok:false,error} if the CSS is rejected (url/scheme/@import/escape-hatch).
+  registerStylesheet(input: Stylesheet): Promise<StylesheetResult>;
 }
 
 export interface HostHandshake {

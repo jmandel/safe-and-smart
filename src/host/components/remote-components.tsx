@@ -358,8 +358,38 @@ const CodeRenderer = createRemoteComponentRenderer(function CodeRenderer({langua
   );
 });
 
+// Styleable primitives. `style`/`className` are already value-validated by the host
+// mutation firewall (CSS validator + token check) before reaching here, so they can
+// be applied directly. className resolves against the applet's registered, scoped
+// stylesheet inside the ShadowRoot.
+const BoxRenderer = createRemoteComponentRenderer(function BoxRenderer({
+  style,
+  className,
+  children,
+}: any) {
+  return (
+    <div className={['remote-box', className].filter(Boolean).join(' ')} style={style ?? undefined}>
+      {children}
+    </div>
+  );
+});
+
+const InlineRenderer = createRemoteComponentRenderer(function InlineRenderer({
+  style,
+  className,
+  children,
+}: any) {
+  return (
+    <span className={className || undefined} style={style ?? undefined}>
+      {children}
+    </span>
+  );
+});
+
 export const remoteComponentMap: RemoteComponentRendererMap = new Map([
   ['remote-fragment', RemoteFragmentRenderer],
+  ['ui-box', BoxRenderer],
+  ['ui-inline', InlineRenderer],
   ['ui-stack', StackRenderer],
   ['ui-grid', GridRenderer],
   ['ui-card', CardRenderer],

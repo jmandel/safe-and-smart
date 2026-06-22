@@ -1,4 +1,4 @@
-// AUTO-GENERATED from src/shared/safe-dom-schema.ts (v1.1.0).
+// AUTO-GENERATED from src/shared/safe-dom-schema.ts (v1.2.0).
 // Do not edit by hand — run `bun tools/generate-schema-types.ts`.
 // Declares the Safe DOM intrinsic elements so applet authors can write
 // `<ui-stack gap={12}>…</ui-stack>` with full type-checking. The runtime binding
@@ -9,6 +9,16 @@ import type {} from 'react';
 declare global {
   namespace JSX {
     interface IntrinsicElements {
+  'ui-box': {
+    style?: Record<string, unknown>;
+    className?: string;
+    children?: unknown;
+  };
+  'ui-inline': {
+    style?: Record<string, unknown>;
+    className?: string;
+    children?: unknown;
+  };
   'ui-stack': {
     gap?: number;
     direction?: string;

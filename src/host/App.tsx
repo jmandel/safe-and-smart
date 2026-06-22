@@ -31,6 +31,13 @@ export function App({
   const [status, setStatus] = useState<'starting' | 'connected' | 'error'>('starting');
   const [error, setError] = useState<string>();
   const [audit, setAudit] = useState<AuditRecord[]>([]);
+  // Validated applet stylesheets (via clinical.registerStylesheet) installed into
+  // the ShadowRoot surface. Reset when the applet (source) changes.
+  const [appletStyles, setAppletStyles] = useState<string[]>([]);
+  useEffect(() => {
+    setAppletStyles([]);
+    broker.setStyleSink((css) => setAppletStyles((prev) => [...prev, css]));
+  }, [broker, appletSourceOverride]);
 
   // Two-origin (recommended, prod): VITE_SANDBOX_ORIGIN points at a different
   // origin and the dev server applies CSP via headers. Single-origin (e.g. GitHub
@@ -187,7 +194,7 @@ export function App({
             <div className="applet-loading">Starting isolated React applet…</div>
           ) : null}
           <AppletErrorBoundary onReload={() => window.location.reload()}>
-            <ShadowSurface>
+            <ShadowSurface appletStyles={appletStyles}>
               <RemoteRootRenderer receiver={receiver} components={remoteComponentMap} />
             </ShadowSurface>
           </AppletErrorBoundary>
@@ -242,6 +249,7 @@ const BUILTINS: AppletEntry[] = [
   {label: 'Medication Reconciliation', value: `${import.meta.env.BASE_URL}applets/med-recon.js`},
   {label: 'Intrinsic JSX demo', value: `${import.meta.env.BASE_URL}applets/intrinsic-demo.js`},
   {label: 'FHIR fetch bridge demo', value: `${import.meta.env.BASE_URL}applets/fhir-bridge-demo.js`},
+  {label: 'Styled vitals (CSS)', value: `${import.meta.env.BASE_URL}applets/styled-vitals.js`},
 ];
 
 const SAVED_KEY = 'safe-and-smart.applets';

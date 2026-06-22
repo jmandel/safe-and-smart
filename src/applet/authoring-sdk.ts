@@ -12,6 +12,8 @@ import {jsx, jsxs, Fragment} from './safe-react/jsx-runtime';
 
 // Capitalised aliases for authors who prefer components over intrinsic tags.
 const ui = {
+  Box: TAG_TO_COMPONENT['ui-box'],
+  Inline: TAG_TO_COMPONENT['ui-inline'],
   Stack: TAG_TO_COMPONENT['ui-stack'],
   Grid: TAG_TO_COMPONENT['ui-grid'],
   Card: TAG_TO_COMPONENT['ui-card'],

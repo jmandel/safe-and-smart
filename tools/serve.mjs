@@ -45,6 +45,13 @@ function headers(kind, pathname) {
     'Referrer-Policy': 'no-referrer',
   };
   if (kind === 'host') {
+    // The /author page runs esbuild-wasm to compile applets in-browser, which needs
+    // 'wasm-unsafe-eval'. Scope it to /author only — the sandbox (where untrusted
+    // applet code runs) has its own strict CSP and is unaffected.
+    const isAuthor = pathname.startsWith('/author');
+    const hostCsp = isAuthor
+      ? HOST_CSP.replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'")
+      : HOST_CSP;
     return {
       ...common,
       'Permissions-Policy':
@@ -55,7 +62,7 @@ function headers(kind, pathname) {
       // regresses. connect-src/frame-src stay broad: the trusted broker talks to
       // arbitrary FHIR/LLM servers and frames the launcher (not applet-controlled
       // sinks). Vega uses its expression interpreter (vega-interpreter), so no 'unsafe-eval'.
-      'Content-Security-Policy': HOST_CSP,
+      'Content-Security-Policy': hostCsp,
     };
   }
 

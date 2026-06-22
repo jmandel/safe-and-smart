@@ -21,7 +21,7 @@ export const AUTHORING_PRELUDE =
   'const { useState, useEffect, useMemo, useRef, useCallback } = React;\n';
 
 let sdkSourcePromise: Promise<string> | undefined;
-function loadSdkSource(): Promise<string> {
+export function loadSdkSource(): Promise<string> {
   if (!sdkSourcePromise) {
     sdkSourcePromise = fetch(`${import.meta.env.BASE_URL}applets/_sdk/authoring-sdk.js`, {
       cache: 'no-store',

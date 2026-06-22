@@ -8,7 +8,7 @@
 // Produces dist/ with: index.html (landing), app.html (wrapper runtime),
 // sandbox.html (launcher) + hashed assets, and applets/*.js (standalone classic
 // worker bundles loaded at runtime).
-import {rmSync, mkdirSync, writeFileSync} from 'node:fs';
+import {rmSync, mkdirSync, writeFileSync, copyFileSync} from 'node:fs';
 
 const BASE = process.env.VITE_BASE ?? '/';
 
@@ -96,5 +96,9 @@ if (!sdk.success) {
   process.exit(1);
 }
 writeFileSync('dist/applets/_sdk/authoring-sdk.js', await sdk.outputs[0].text());
+
+// 4. esbuild-wasm binary — served same-origin so the /author page can initialize
+//    the in-browser bundler under the host CSP.
+copyFileSync('node_modules/esbuild-wasm/esbuild.wasm', 'dist/esbuild.wasm');
 
 console.log(`Built with Bun -> dist/ (base ${BASE}).`);

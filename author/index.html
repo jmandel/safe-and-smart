@@ -4,7 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; img-src data: blob:; media-src 'none'; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src 'self' blob:; connect-src 'self' https: http:; frame-src 'self' http: https: blob:" />
+    <!-- 'wasm-unsafe-eval' is required for esbuild-wasm to compile applets in the
+         browser. It applies only to this trusted authoring page; untrusted applet
+         code runs in the sandbox (separate strict CSP). connect-src allows esm.sh
+         for npm package resolution. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; img-src data: blob:; media-src 'none'; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https: http:; frame-src 'self' http: https: blob:" />
     <title>Author a Safe-and-SMART applet</title>
   </head>
   <body>

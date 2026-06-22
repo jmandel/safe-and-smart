@@ -200,3 +200,8 @@ select.shell-pill option { color: #10223d; background: white; }
 }
 .remote-field textarea { resize: vertical; }
 .remote-field input[aria-invalid="true"], .remote-field textarea[aria-invalid="true"] { border-color: #e06666; background: #fff7f7; }
+
+/* Authoring file tabs (W4 multi-file) */
+.authoring-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.authoring-tab { padding: 4px 10px; border: 1px solid #cbd5e1; border-bottom: 0; border-radius: 6px 6px 0 0; background: #f1f5f9; cursor: pointer; font: 12px ui-monospace, monospace; }
+.authoring-tab.active { background: #fff; font-weight: 700; }

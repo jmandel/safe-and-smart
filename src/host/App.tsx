@@ -34,8 +34,10 @@ export function App({
   // Validated applet stylesheets (via clinical.registerStylesheet) installed into
   // the ShadowRoot surface. Reset when the applet (source) changes.
   const [appletStyles, setAppletStyles] = useState<string[]>([]);
+  const [mutations, setMutations] = useState(0);
   useEffect(() => {
     setAppletStyles([]);
+    setMutations(0);
     broker.setStyleSink((css) => setAppletStyles((prev) => [...prev, css]));
   }, [broker, appletSourceOverride]);
 
@@ -86,6 +88,7 @@ export function App({
             protocolVersion: PROTOCOL_VERSION,
             remoteConnection: guardConnection(receiver.connection, {
               validateRecords: createSafeDomFirewall().validateRecords,
+              onStats: (total) => setMutations(total),
               onViolation: (code, detail) => {
                 // Dev diagnostic + audit trail. A schema violation usually means the
                 // applet used an element/prop/event outside the Safe DOM surface —
@@ -201,7 +204,10 @@ export function App({
         </section>
 
         <aside className="audit-panel" aria-label="Trusted broker audit log">
-          <h2>Trusted-shell capability audit</h2>
+          <h2>
+            Trusted-shell capability audit
+            {mutations > 0 ? <span className="audit-stat">{mutations.toLocaleString()} mutations</span> : null}
+          </h2>
           {audit.length === 0 ? (
             <div className="audit-empty">No applet capability calls yet.</div>
           ) : (

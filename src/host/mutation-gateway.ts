@@ -29,6 +29,10 @@ export interface GuardOptions {
   // rejects the whole batch (the applet sent a disallowed element/prop/event).
   validateRecords?: (records: readonly unknown[]) => void;
   onViolation?: (code: MutationViolation, detail: string) => void;
+  // Perf/mutation profiling: called with the running applied-record total roughly
+  // every `statsEvery` records (default 250) so the host can surface throughput.
+  onStats?: (appliedTotal: number) => void;
+  statsEvery?: number;
 }
 
 export function guardConnection(
@@ -38,7 +42,10 @@ export function guardConnection(
   const maxTotal = options.maxTotalMutations ?? 250_000;
   const onViolation = options.onViolation ?? (() => {});
   const validateRecords = options.validateRecords;
+  const onStats = options.onStats;
+  const statsEvery = options.statsEvery ?? 250;
   let applied = 0;
+  let lastStatsAt = 0;
   let cutOff = false;
 
   return {
@@ -61,7 +68,13 @@ export function guardConnection(
         }
       }
       try {
-        return connection.mutate(records);
+        const result = connection.mutate(records);
+        // Report the first activity, then roughly every statsEvery records after.
+        if (onStats && (lastStatsAt === 0 ? applied > 0 : applied - lastStatsAt >= statsEvery)) {
+          lastStatsAt = applied;
+          onStats(applied);
+        }
+        return result;
       } catch (error) {
         cutOff = true;
         onViolation('mutation-apply-failed', error instanceof Error ? error.message : String(error));

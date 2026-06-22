@@ -205,3 +205,6 @@ select.shell-pill option { color: #10223d; background: white; }
 .authoring-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .authoring-tab { padding: 4px 10px; border: 1px solid #cbd5e1; border-bottom: 0; border-radius: 6px 6px 0 0; background: #f1f5f9; cursor: pointer; font: 12px ui-monospace, monospace; }
 .authoring-tab.active { background: #fff; font-weight: 700; }
+
+/* W6 perf instrumentation pill in the audit panel header */
+.audit-stat { float: right; font-size: 11px; font-weight: 600; color: #8edac5; background: rgb(142 218 197 / 12%); border-radius: 999px; padding: 2px 8px; }

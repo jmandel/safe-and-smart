@@ -27,6 +27,17 @@ describe('guardConnection', () => {
     expect(violations[0]?.[0]).toBe('mutation-budget-exceeded');
   });
 
+  it('reports applied-record stats roughly every statsEvery records', () => {
+    const stats: number[] = [];
+    const inner = {mutate: () => undefined, call: () => undefined};
+    const guarded = guardConnection(inner, {onStats: (n) => stats.push(n), statsEvery: 3});
+    guarded.mutate([1, 2]); // 2 — first activity always reported
+    guarded.mutate([3, 4]); // 4 — 4-2=2 < 3, no report
+    guarded.mutate([5]); // 5 — 5-2=3 >= 3, report
+    guarded.mutate([6, 7]); // 7 — 7-5=2 < 3, no report
+    expect(stats).toEqual([2, 5]);
+  });
+
   it('isolates a throwing mutation as an audited violation and cuts off', () => {
     const violations: Array<[MutationViolation, string]> = [];
     const inner = {

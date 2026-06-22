@@ -277,5 +277,19 @@ server **and** to leave the shell alive. Current hostile corpus (all CONTAINED):
 - `import-scripts` — `importScripts` via own-property, prototype, and nested Worker.
 - `disallowed-element` — raw `<img>` (exercises the error boundary).
 The corpus grows by one+ case per phase; a phase is not "done" until its new
-hostile cases are CONTAINED. Host-side controls are unit-tested
-(`tests/fhir-capability.test.ts`, `tests/mutation-gateway.test.ts`).
+hostile cases are CONTAINED. Host-side controls are unit-tested across
+`tests/*.test.ts` (firewall, mutation gateway, CSS + SVG validators, safe events,
+FHIR capability).
+
+## 10. Reproducing claims against an exact release (Phase 7)
+- `bun run verify` runs typecheck + the unit suite; the `verify` CI workflow
+  (`.github/workflows/verify.yml`) additionally builds and runs the browser
+  red-team on every push, so these claims are enforced, not just asserted.
+- `bun run release` emits `dist/RELEASE_MANIFEST.json` — SHA-256 of every served
+  artifact and of each trusted-computing-base source file, plus the schema/protocol
+  versions and pinned dependency versions. A reviewer matches the deployed hashes,
+  then audits the named `tcbSources`.
+- `docs/PRODUCTION_DEPLOYMENT.md` defines the supported deployment configurations
+  (demo single-origin Pages vs. production two-domain + server headers + managed
+  egress), the browser matrix, dependency upgrade gates, applet signing/identity,
+  and incident/revocation procedures.

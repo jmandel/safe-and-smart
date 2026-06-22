@@ -3,12 +3,22 @@
 // request to an independent canary server. Run with: bun tests/security/redteam.mjs
 // Env: REDTEAM_CHROMIUM=<path to chrome>, WRAPPER=http://localhost:4273 (default)
 import {createServer} from 'node:http';
-import {readdirSync, mkdirSync} from 'node:fs';
-import pw from '/home/jmandel/node_modules/playwright-core/index.js';
-const {chromium} = pw;
+import {readdirSync, mkdirSync, existsSync} from 'node:fs';
+import {createRequire} from 'node:module';
+// Resolve playwright from either a global install (local dev) or the project.
+const require = createRequire(import.meta.url);
+let chromium;
+try {
+  ({chromium} = require('/home/jmandel/node_modules/playwright-core/index.js'));
+} catch {
+  ({chromium} = require('playwright-core'));
+}
 
 const WRAPPER = process.env.WRAPPER ?? 'http://localhost:4273';
-const CHROME = process.env.REDTEAM_CHROMIUM ?? '/home/jmandel/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
+// Use an explicit chromium path if provided/known; otherwise let Playwright use
+// its own installed browser (CI: `playwright install chromium`).
+const LOCAL_CHROME = '/home/jmandel/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
+const CHROME = process.env.REDTEAM_CHROMIUM ?? (existsSync(LOCAL_CHROME) ? LOCAL_CHROME : undefined);
 const CANARY_PORT = 4399;
 
 // 1) Build hostile bundles into dist/applets/_hostile (served by the running wrapper).
@@ -36,7 +46,11 @@ const canary = createServer((req, res) => {
 }).listen(CANARY_PORT);
 
 // 3) Drive each hostile applet; assert no canary hit.
-const b = await chromium.launch({headless: true, executablePath: CHROME, args: ['--no-sandbox']});
+const b = await chromium.launch({
+  headless: true,
+  ...(CHROME ? {executablePath: CHROME} : {}),
+  args: ['--no-sandbox'],
+});
 let failures = 0;
 for (const c of cases) {
   hits = [];

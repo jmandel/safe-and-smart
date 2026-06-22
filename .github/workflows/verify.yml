@@ -1,0 +1,53 @@
+name: Verify (typecheck, unit tests, red-team)
+
+# The security gate. Reproduces the unit + browser hostile-applet checks on every
+# push/PR so the security claims (docs/SECURITY_CLAIMS_AND_ASSUMPTIONS.md) stay
+# enforced, not just asserted. A canary hit or a surviving leak fails the build.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests (firewall, gateway, CSS/SVG validators, events, FHIR)
+        run: bun run test
+
+      - name: Build (dev two-origin variant for the harness)
+        env:
+          VITE_SANDBOX_ORIGIN: http://127.0.0.1:4274
+        run: bun run build.ts
+
+      - name: Install Chromium for the red-team harness
+        run: bunx playwright install --with-deps chromium
+
+      - name: Serve dist (wrapper :4273 + sandbox :4274)
+        env:
+          HOST_PORT: '4273'
+          SANDBOX_PORT: '4274'
+        run: node tools/serve.mjs &
+
+      - name: Wait for the server
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4273/run/ >/dev/null && break
+            sleep 1
+          done
+
+      - name: Red-team — hostile applets must produce zero canary hits
+        run: bun tests/security/redteam.mjs
+
+      - name: Release manifest (artifact + TCB hashes)
+        run: bun run tools/release-manifest.ts

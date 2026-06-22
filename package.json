@@ -13,7 +13,9 @@
     "test": "bun test tests/*.test.ts",
     "test:browser": "playwright test",
     "test:redteam": "bun tests/security/redteam.mjs",
-    "typecheck": "tsc -b --pretty false"
+    "typecheck": "tsc -b --pretty false",
+    "verify": "bun run typecheck && bun run test",
+    "release": "VITE_SANDBOX_ORIGIN=self bun run build.ts && bun run tools/release-manifest.ts"
   },
   "dependencies": {
     "@quilted/threads": "4.0.3",

@@ -1,0 +1,193 @@
+// Applet runtime / SDK. A standalone applet (built with Bun/Vite, using React +
+// any pure libraries like Zustand) compiles against this: it imports `runApplet`
+// and passes its root component. The runtime owns the worker-side protocol —
+// handshake, security probe, and Remote DOM wiring — so applet authors write
+// only their React app. Bundled as a self-contained CLASSIC worker script, the
+// result can be hosted anywhere (GitHub Pages, a CDN, S3) and loaded at runtime
+// by any wrapper that speaks this protocol.
+//
+// Import order matters: native-globals must run before the Remote DOM polyfills
+// so isolation reporting can tell the synthetic worker DOM from a real one.
+import './native-globals';
+import '@remote-dom/core/polyfill';
+import '@remote-dom/react/polyfill';
+
+import React from 'react';
+import {createRoot, type Root} from 'react-dom/client';
+import {BatchingRemoteConnection} from '@remote-dom/core/elements';
+import {ThreadMessagePort} from '@quilted/threads';
+import {
+  PROTOCOL_VERSION,
+  type AppletThreadExports,
+  type ClinicalCapabilityApi,
+  type ClinicalContext,
+  type HostThreadExports,
+  type SecurityProbeResult,
+} from '../shared/protocol';
+import {RootElement} from './remote-elements';
+import {runSecurityProbe} from './security-probe';
+
+export interface AppletProps {
+  clinical: ClinicalCapabilityApi;
+  context: ClinicalContext;
+  securityProbe: SecurityProbeResult;
+}
+
+export interface AppletManifest {
+  appletId: string;
+  appletVersion: string;
+}
+
+let reactRoot: Root | undefined;
+let connected = false;
+
+export function runApplet(App: React.ComponentType<AppletProps>, manifest: AppletManifest) {
+  self.addEventListener(
+    'message',
+    (event: MessageEvent<{type?: string; probeUrl?: string}>) => {
+      if (connected || event.data?.type !== 'clinical-applet/connect') return;
+      const port = event.ports[0];
+      if (!port) throw new Error('Applet worker did not receive its MessagePort.');
+      connected = true;
+      port.start();
+      void start(App, manifest, port, event.data.probeUrl ?? 'http://127.0.0.1:4174/probe');
+    },
+  );
+}
+
+async function start(
+  App: React.ComponentType<AppletProps>,
+  manifest: AppletManifest,
+  port: MessagePort,
+  probeUrl: string,
+) {
+  const thread = new ThreadMessagePort<HostThreadExports, AppletThreadExports>(port, {
+    exports: {
+      async ping() {
+        return {ok: true as const, at: new Date().toISOString()};
+      },
+      async dispose() {
+        reactRoot?.unmount();
+        reactRoot = undefined;
+      },
+    },
+  });
+
+  const handshake = await thread.imports.connect({
+    protocolVersion: PROTOCOL_VERSION,
+    appletId: manifest.appletId,
+    appletVersion: manifest.appletVersion,
+  });
+
+  if (handshake.protocolVersion !== PROTOCOL_VERSION) {
+    throw new Error(`Unsupported protocol version ${handshake.protocolVersion}.`);
+  }
+
+  const securityProbe = await runSecurityProbe(probeUrl);
+  // Install the OpenAI-compatible LLM bridge AFTER the probe (so the probe still
+  // measures real native-fetch isolation). This gives applets clean, familiar LLM
+  // ergonomics — `fetch('https://llm.internal/v1/chat/completions', …)` or the
+  // real `openai` client pointed at that baseURL — while every call is actually
+  // routed over the MessagePort to the wrapper's brokered llmComplete. No API key
+  // and no real network ever exist in the applet.
+  installLlmBridge(handshake.clinical);
+  await handshake.clinical.audit({
+    kind: 'security-probe',
+    message: `DOM=${securityProbe.directDomUnavailable}; network=${securityProbe.directNetworkBlocked}; storage=${securityProbe.persistentStorageBlocked}`,
+    detail: securityProbe.details,
+  });
+
+  const rootElement = document.createElement('remote-root') as InstanceType<typeof RootElement>;
+  rootElement.connect(new BatchingRemoteConnection(handshake.remoteConnection));
+  document.body.append(rootElement);
+
+  reactRoot = createRoot(rootElement);
+  reactRoot.render(
+    <App
+      clinical={handshake.clinical}
+      context={handshake.context}
+      securityProbe={securityProbe}
+    />,
+  );
+}
+
+// Sentinel base the applet's HTTP-style LLM calls target. It is not a real host;
+// it is recognized by the shim and routed to the broker. Use it as the `baseURL`
+// for the openai client, or call it with fetch directly.
+const LLM_BASE = 'https://llm.internal/';
+
+let bridgeInstalled = false;
+
+function installLlmBridge(clinical: ClinicalCapabilityApi) {
+  if (bridgeInstalled) return;
+  bridgeInstalled = true;
+  const realFetch = typeof self.fetch === 'function' ? self.fetch.bind(self) : undefined;
+
+  self.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (url.startsWith(LLM_BASE)) return bridgeChatCompletion(clinical, init, input);
+    // Everything else stays unavailable — the applet has no ambient network.
+    // (Native fetch is already CSP-blocked; we surface a clear error.)
+    if (realFetch) return realFetch(input as RequestInfo, init);
+    throw new TypeError('Direct network is blocked in the applet sandbox.');
+  }) as typeof fetch;
+}
+
+// Translate an OpenAI /v1/chat/completions request into a brokered llmComplete
+// call and return an OpenAI-shaped chat.completion response. When the caller asks
+// for JSON (response_format), the message content is the JSON-encoded structured
+// result — exactly the contract OpenAI's JSON mode uses.
+async function bridgeChatCompletion(
+  clinical: ClinicalCapabilityApi,
+  init: RequestInit | undefined,
+  input: RequestInfo | URL,
+): Promise<Response> {
+  const raw =
+    init?.body != null
+      ? typeof init.body === 'string'
+        ? init.body
+        : new TextDecoder().decode(init.body as ArrayBuffer)
+      : input instanceof Request
+        ? await input.text()
+        : '{}';
+  const body = JSON.parse(raw || '{}') as {
+    model?: string;
+    messages?: Array<{role: 'system' | 'user' | 'assistant'; content: unknown}>;
+    response_format?: {type?: string; json_schema?: {schema?: Record<string, unknown>}};
+  };
+
+  const messages = (body.messages ?? []).map((m) => ({
+    role: m.role,
+    content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+  }));
+  const wantsJson =
+    body.response_format?.type === 'json_object' || body.response_format?.type === 'json_schema';
+
+  const result = await clinical.llmComplete({
+    profile: body.model ?? 'default', // in the brokered world, "model" == approved profile
+    messages,
+    responseSchema: wantsJson ? body.response_format?.json_schema?.schema ?? {} : undefined,
+  });
+
+  const content =
+    result.data !== undefined
+      ? JSON.stringify({summary: result.text, ...(result.data as object)})
+      : result.text;
+
+  const completion = {
+    id: 'chatcmpl-sandbox',
+    object: 'chat.completion',
+    created: 0,
+    model: result.model,
+    choices: [{index: 0, message: {role: 'assistant', content}, finish_reason: 'stop'}],
+    usage: {
+      prompt_tokens: result.usage.inputTokens,
+      completion_tokens: result.usage.outputTokens,
+      total_tokens: result.usage.inputTokens + result.usage.outputTokens,
+    },
+  };
+  return new Response(JSON.stringify(completion), {
+    status: 200,
+    headers: {'content-type': 'application/json'},
+  });
+}

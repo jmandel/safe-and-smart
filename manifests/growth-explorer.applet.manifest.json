@@ -1,0 +1,38 @@
+{
+  "$schema": "https://example.invalid/clinical-applet-manifest-v1.schema.json",
+  "id": "org.example.growth-explorer",
+  "version": "0.1.0",
+  "displayName": "Growth Explorer",
+  "runtime": "remote-dom-react-v1",
+  "entry": "src/applet/App.tsx",
+  "fhir": {
+    "authority": "active-smart-grant",
+    "writeMode": "read-only",
+    "patientCompartmentRequired": false
+  },
+  "llmProfiles": [
+    "baa-clinical-summary-demo"
+  ],
+  "uiSdk": "spike-v1",
+  "hostComponents": [
+    "Stack",
+    "Grid",
+    "Card",
+    "Heading",
+    "Text",
+    "Badge",
+    "Alert",
+    "Button",
+    "Select",
+    "Slider",
+    "Stat",
+    "Table",
+    "Vega"
+  ],
+  "budgets": {
+    "fhirResponseBytes": 4000000,
+    "vegaSpecBytes": 1500000,
+    "maximumAuditEventsPerMinute": 60
+  },
+  "clinicalStatus": "synthetic-demonstration-only"
+}

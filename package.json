@@ -1,0 +1,44 @@
+{
+  "name": "clinical-browser-sandbox-spike",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-only clinical applet sandbox spike using React, Remote DOM, SMART-style FHIR brokering, and Vega-Lite.",
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "build:applet": "bun run tools/build-applet.ts",
+    "build:all": "npm run build && npm run build:applet",
+    "build:pages": "VITE_SANDBOX_ORIGIN=self npm run build && npm run build:applet",
+    "start": "npm run build && node tools/serve.mjs",
+    "serve": "node tools/serve.mjs",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "test:all": "npm run test && npm run build && npm run test:browser",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "@quilted/threads": "4.0.3",
+    "@remote-dom/core": "1.11.1",
+    "@remote-dom/polyfill": "1.5.1",
+    "@remote-dom/react": "1.2.2",
+    "fhirclient": "2.6.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "vega-embed": "7.1.0",
+    "zod": "4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.0",
+    "@types/node": "24.3.0",
+    "@types/react": "18.3.24",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "6.0.1",
+    "typescript": "6.0.3",
+    "vite": "8.0.16",
+    "vitest": "4.1.9"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

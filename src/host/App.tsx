@@ -11,6 +11,7 @@ import {remoteComponentMap} from './components/remote-components';
 import {AppletErrorBoundary} from './AppletErrorBoundary';
 import {loadAppletBundle} from './load-applet';
 import {guardConnection} from './mutation-gateway';
+import {createSafeDomFirewall} from './safe-dom-firewall';
 
 export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit} = {}) {
   const receiver = useMemo(() => new RemoteReceiver({retain, release}), []);
@@ -67,6 +68,7 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
           return {
             protocolVersion: PROTOCOL_VERSION,
             remoteConnection: guardConnection(receiver.connection, {
+              validateRecords: createSafeDomFirewall().validateRecords,
               onViolation: (code, detail) =>
                 broker.recordHostEvent(`mutation.${code}`, detail, 'denied'),
             }),

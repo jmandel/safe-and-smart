@@ -18,12 +18,16 @@ export interface RemoteConnectionLike {
 
 export type MutationViolation =
   | 'mutation-budget-exceeded'
+  | 'mutation-schema-violation'
   | 'mutation-apply-failed'
   | 'call-failed';
 
 export interface GuardOptions {
   // Total mutation records this applet session may apply before it is cut off.
   maxTotalMutations?: number;
+  // Schema firewall: validate the batch before it reaches the receiver. Throwing
+  // rejects the whole batch (the applet sent a disallowed element/prop/event).
+  validateRecords?: (records: readonly unknown[]) => void;
   onViolation?: (code: MutationViolation, detail: string) => void;
 }
 
@@ -33,6 +37,7 @@ export function guardConnection(
 ): RemoteConnectionLike {
   const maxTotal = options.maxTotalMutations ?? 250_000;
   const onViolation = options.onViolation ?? (() => {});
+  const validateRecords = options.validateRecords;
   let applied = 0;
   let cutOff = false;
 
@@ -45,6 +50,15 @@ export function guardConnection(
         cutOff = true;
         onViolation('mutation-budget-exceeded', `${applied} records exceeds budget ${maxTotal}`);
         throw new Error(`Applet exceeded the mutation budget (${maxTotal} records).`);
+      }
+      if (validateRecords) {
+        try {
+          validateRecords(records);
+        } catch (error) {
+          cutOff = true;
+          onViolation('mutation-schema-violation', error instanceof Error ? error.message : String(error));
+          throw error;
+        }
       }
       try {
         return connection.mutate(records);

@@ -7,6 +7,7 @@ import {
   type RemoteComponentRendererMap,
 } from '@remote-dom/react/host';
 import {sanitizeVegaSpec} from './vega-sanitizer';
+import {sanitizeSvgMarkup} from '../safe-svg-validator';
 import {
   toSafeNumberEvent,
   toSafePointerEvent,
@@ -386,10 +387,30 @@ const InlineRenderer = createRemoteComponentRenderer(function InlineRenderer({
   );
 });
 
+// Author SVG. The markup is parsed + validated against the safe subset and
+// re-serialized host-side; only the validated tree is injected. Rejected markup
+// renders a fallback, never the author's raw string.
+const SvgRenderer = createRemoteComponentRenderer(function SvgRenderer({markup, ariaLabel}: any) {
+  const safe = useMemo(
+    () => (typeof markup === 'string' ? sanitizeSvgMarkup(markup) : null),
+    [markup],
+  );
+  if (!safe) return <div className="remote-svg-error">SVG rejected by the safe-subset validator.</div>;
+  return (
+    <div
+      className="remote-svg"
+      role="img"
+      aria-label={String(ariaLabel ?? 'diagram').slice(0, 200)}
+      dangerouslySetInnerHTML={{__html: safe}}
+    />
+  );
+});
+
 export const remoteComponentMap: RemoteComponentRendererMap = new Map([
   ['remote-fragment', RemoteFragmentRenderer],
   ['ui-box', BoxRenderer],
   ['ui-inline', InlineRenderer],
+  ['ui-svg', SvgRenderer],
   ['ui-stack', StackRenderer],
   ['ui-grid', GridRenderer],
   ['ui-card', CardRenderer],

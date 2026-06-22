@@ -250,6 +250,7 @@ const BUILTINS: AppletEntry[] = [
   {label: 'Intrinsic JSX demo', value: `${import.meta.env.BASE_URL}applets/intrinsic-demo.js`},
   {label: 'FHIR fetch bridge demo', value: `${import.meta.env.BASE_URL}applets/fhir-bridge-demo.js`},
   {label: 'Styled vitals (CSS)', value: `${import.meta.env.BASE_URL}applets/styled-vitals.js`},
+  {label: 'Care pathway (SVG)', value: `${import.meta.env.BASE_URL}applets/careplan-diagram.js`},
 ];
 
 const SAVED_KEY = 'safe-and-smart.applets';

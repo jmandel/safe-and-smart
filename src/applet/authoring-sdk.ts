@@ -27,6 +27,7 @@ const ui = {
   Stat: TAG_TO_COMPONENT['ui-stat'],
   Table: TAG_TO_COMPONENT['ui-table'],
   Vega: TAG_TO_COMPONENT['ui-vega'],
+  Svg: TAG_TO_COMPONENT['ui-svg'],
   Code: TAG_TO_COMPONENT['ui-code'],
 };
 

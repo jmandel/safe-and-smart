@@ -87,4 +87,5 @@ export const Slider = TAG_TO_COMPONENT['ui-slider']!;
 export const Stat = TAG_TO_COMPONENT['ui-stat']!;
 export const Table = TAG_TO_COMPONENT['ui-table']!;
 export const Vega = TAG_TO_COMPONENT['ui-vega']!;
+export const Svg = TAG_TO_COMPONENT['ui-svg']!;
 export const Code = TAG_TO_COMPONENT['ui-code']!;

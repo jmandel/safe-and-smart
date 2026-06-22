@@ -8,7 +8,7 @@
 //
 // Bump SAFE_DOM_SCHEMA_VERSION on any change; the handshake can use it to refuse
 // an applet built against an incompatible surface.
-export const SAFE_DOM_SCHEMA_VERSION = '1.2.0';
+export const SAFE_DOM_SCHEMA_VERSION = '1.3.0';
 
 export type SafePropType = 'string' | 'number' | 'boolean' | 'array' | 'object';
 
@@ -117,6 +117,13 @@ export const SAFE_DOM_SCHEMA: Readonly<Record<string, SafeElementSchema>> = {
   },
   'ui-vega': {
     properties: {spec: 'object', ariaLabel: 'string', minimumHeight: 'number'},
+    events: [],
+    children: false,
+  },
+  'ui-svg': {
+    // `markup` is author SVG; the renderer parses + validates it against the safe
+    // subset (no script/handlers/external refs) and re-serializes before render.
+    properties: {markup: 'string', ariaLabel: 'string'},
     events: [],
     children: false,
   },

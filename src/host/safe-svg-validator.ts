@@ -104,4 +104,25 @@ export function validateSvgDocument(root: ElementLike): void {
   validateElement(root);
 }
 
+const MAX_SVG_BYTES = 256_000;
+
+// Browser-side sanitizer used by the ui-svg renderer: parse author markup, validate
+// it against the safe subset, and return the RE-SERIALIZED validated tree (so what
+// renders is exactly what was validated). Returns null if rejected — the renderer
+// then shows a fallback instead of any author markup.
+export function sanitizeSvgMarkup(markup: string): string | null {
+  if (typeof markup !== 'string' || markup.length === 0 || markup.length > MAX_SVG_BYTES) return null;
+  try {
+    const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+    const root = doc.documentElement as unknown as ElementLike & {getElementsByTagName?: (n: string) => ArrayLike<unknown>};
+    // DOMParser reports XML errors as a <parsererror> element rather than throwing.
+    if (!root || tagOf(root) === 'parsererror') return null;
+    if (root.getElementsByTagName && root.getElementsByTagName('parsererror').length > 0) return null;
+    validateSvgDocument(root);
+    return new XMLSerializer().serializeToString(root as unknown as Node);
+  } catch {
+    return null;
+  }
+}
+
 export {CssViolation};

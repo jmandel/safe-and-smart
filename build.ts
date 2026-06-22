@@ -63,6 +63,7 @@ const APPLETS = [
   {entry: 'src/applet/intrinsic-demo/entry.tsx', out: 'intrinsic-demo.js'},
   {entry: 'src/applet/fhir-bridge-demo/entry.tsx', out: 'fhir-bridge-demo.js'},
   {entry: 'src/applet/styled-vitals/entry.tsx', out: 'styled-vitals.js'},
+  {entry: 'src/applet/careplan-diagram/entry.tsx', out: 'careplan-diagram.js'},
 ];
 for (const applet of APPLETS) {
   const result = await Bun.build({

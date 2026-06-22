@@ -90,8 +90,8 @@ imported **before** the polyfills, and probe those, so the report honestly says
 
 The repo is bundled by **Bun only** (`build.ts`, no Vite). Two kinds of output:
 
-1. **HTML entries** — `index.html` (landing), `app.html` (wrapper runtime),
-   `sandbox.html` (launcher) — built together with Bun's HTML bundler, which
+1. **HTML entries** — `index.html` (landing + wrapper runtime, clean-URL routing)
+   and `sandbox.html` (launcher) — built together with Bun's HTML bundler, which
    bundles their module scripts + CSS and rewrites refs. These are ES-module
    scripts; that's fine because they load same-origin (or from a host sending CORS
    headers — GitHub Pages sends `access-control-allow-origin: *`, which is what
@@ -114,7 +114,7 @@ const define = {
 };
 
 await Bun.build({                       // HTML entries (host/landing/launcher)
-  entrypoints: ['index.html', 'app.html', 'sandbox.html'],
+  entrypoints: ['index.html', 'sandbox.html'],
   outdir: 'dist', target: 'browser', minify: true, define,
   ...(BASE !== '/' ? {publicPath: BASE} : {}),
 });

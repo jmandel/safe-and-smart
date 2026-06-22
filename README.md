@@ -7,7 +7,7 @@ third-party or LLM-written ones) without any of them being able to leak the toke
 call home, or touch storage. Safety is a property of the wrapper, not a promise
 each app has to keep.
 
-> Live demo: **https://jmandel.github.io/safe-and-smart/**
+> Live demo: **https://joshuamandel.com/safe-and-smart/**
 >
 > All data is synthetic (SMART sandbox / fabricated). This is an architecture
 > demonstration, not a clinical product.
@@ -42,8 +42,8 @@ Trusted wrapper (real origin, has token)
 
 ## What's in here
 
-- **Landing page** (`index.html`) with deep-link entry points; the **wrapper
-  runtime** is a separate entry (`app.html`).
+- A **landing page** and the **wrapper runtime** on a single page with clean deep
+  links (`?fhir=smart`, `?applet=<url>`, `?run=growth`).
 - Two applets in different domains, behind a picker, equally sandboxed:
   - **Growth Explorer** — React + Zustand + Vega-Lite growth chart.
   - **Medication Reconciliation** — sends the structured med list + notes to an

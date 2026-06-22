@@ -1,8 +1,9 @@
 import React from 'react';
 
-// Base-aware links into the wrapper runtime (a separate entry, app.html).
+// Base-aware links. The wrapper runtime is the same page with a deep-link query
+// (clean URLs — no .html). asset() builds an absolute path under the base.
 const base = import.meta.env.BASE_URL;
-const app = (query: string) => `${base}app.html${query}`;
+const app = (query: string) => `${base}${query}`;
 const asset = (path: string) => `${base}${path}`;
 
 interface Entry {

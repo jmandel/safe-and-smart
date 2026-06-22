@@ -35,7 +35,7 @@ mkdirSync('dist/applets', {recursive: true});
 
 // 1. HTML entries (landing, wrapper runtime, sandbox launcher) + their JS/CSS.
 const html = await Bun.build({
-  entrypoints: ['index.html', 'app.html', 'sandbox.html'],
+  entrypoints: ['index.html', 'sandbox.html'],
   outdir: 'dist',
   target: 'browser',
   minify: true,

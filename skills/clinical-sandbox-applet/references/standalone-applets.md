@@ -15,6 +15,26 @@ The reference implementation **implements this today** (not just documents it):
 Verified: loading the bundle **cross-origin** at runtime renders the applet,
 passes all isolation probes, and pulls live FHIR — identical to the default applet path.
 
+## You do NOT register an applet to run it
+
+This is the deployment payoff worth stressing. An applet does **not** need to be
+bundled into, registered with, or deployed alongside any particular wrapper. Host
+the bundle anywhere with permissive CORS, then run it in **any compatible wrapper**
+— including the public demo or any other hosted copy — by appending `?applet=<url>`:
+
+```
+https://joshuamandel.com/safe-and-smart/?applet=https://you.example/applet.js
+```
+
+The wrapper just fetches your source and sandboxes it; there is no registry,
+manifest upload, or redeploy. Registering an applet in a wrapper's `build.ts` /
+`REGISTRY` is **only** for shipping it inside that wrapper and listing it in the
+picker — a convenience, not a requirement. So an applet author can iterate on a
+GitHub Pages bundle and demo it live against a real (or sandbox) SMART context
+they never had to stand up themselves. (Provenance controls — which wrappers
+choose to load which URLs — are a wrapper policy decision; see "provenance vs.
+containment" in `patterns.md`.)
+
 ## The contract (what "compiled into a loadable form" means)
 
 An applet bundle is **one self-contained classic (IIFE) worker script** whose
@@ -81,14 +101,14 @@ broker; it never sees the token.
 
 The **trusted wrapper** performs the fetch, so the applet host must allow that
 cross-origin read (or the wrapper proxies it):
-- **GitHub Pages**: serves static files but does **not** reliably set
-  `Access-Control-Allow-Origin`. Easiest path: serve the same file via a CDN that
-  does — e.g. jsDelivr (`https://cdn.jsdelivr.net/gh/<user>/<repo>@<tag>/applet.js`)
-  or `raw.githubusercontent.com` (sends `ACAO: *`).
+- **GitHub Pages**: sends `access-control-allow-origin: *` (verified), so a
+  Pages-hosted bundle loads cross-origin into another wrapper out of the box.
+- **CDNs**: jsDelivr (`https://cdn.jsdelivr.net/gh/<user>/<repo>@<tag>/applet.js`)
+  and `raw.githubusercontent.com` also send `ACAO: *`.
 - **Same-origin**: host the bundle on the wrapper's own domain — no CORS at all.
 - **Wrapper-proxied**: the wrapper's backend fetches the URL server-side and
-  re-serves it same-origin. This also lets the wrapper enforce allowlists/hashes
-  centrally and works for hosts with no CORS.
+  re-serves it same-origin. Lets the wrapper enforce allowlists/hashes centrally
+  and works even for hosts that send no CORS header.
 
 In the reference impl, the dev sandbox origin sends `ACAO: *`, which is why
 loading `?applet=http://127.0.0.1:4274/applets/growth-remote.js` works cross

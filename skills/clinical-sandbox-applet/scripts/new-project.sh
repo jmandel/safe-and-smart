@@ -49,7 +49,16 @@ Done. Next:
   node tools/serve.mjs    # wrapper: http://localhost:$HP   sandbox: http://127.0.0.1:$SP
 
 The starter ships two applets (Growth Explorer, Med Reconciliation) behind a
-picker. To add your own:
+picker. Two ways to run your own applet:
+
+A) HOST IT ANYWHERE, NO REGISTRATION. Build any compatible applet to one classic
+   bundle (see the skill's standalone-applets.md) and serve it with permissive
+   CORS (GitHub Pages, a CDN, S3…). Then run it in ANY compatible wrapper —
+   including the public demo — by appending ?applet=<url>:
+     https://joshuamandel.com/safe-and-smart/?applet=<your-bundle-url>
+   Nothing is registered; the wrapper just fetches and sandboxes it.
+
+B) BUNDLE IT INTO THIS WRAPPER (so it ships in the picker):
   1. Write src/applet/<your>/App.tsx (a React component; Zustand etc. work as-is).
   2. Add src/applet/<your>/entry.tsx: runApplet(App, {appletId, appletVersion}).
   3. Register it in build.ts (APPLETS) and in REGISTRY in src/host/App.tsx.

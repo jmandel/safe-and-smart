@@ -44,7 +44,8 @@ for (const c of cases) {
   await p.goto(`${WRAPPER}/run/?applet=${encodeURIComponent(c.url)}`, {waitUntil: 'load'}).catch(() => {});
   await p.waitForTimeout(4500);
   const leaked = hits.filter((h) => !h.startsWith('/favicon'));
-  const ok = leaked.length === 0;
+  const shellSurvived = await p.locator('text=Clinical Applet Runtime').count() > 0;
+  const ok = leaked.length === 0 && shellSurvived;
   if (!ok) failures++;
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${c.name}${ok ? '' : '  → canary hits: ' + JSON.stringify(leaked)}`);
   await p.close();

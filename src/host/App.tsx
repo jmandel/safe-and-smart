@@ -8,6 +8,7 @@ import {
 } from '../shared/protocol';
 import {ClinicalBroker, type AuditRecord} from './broker/clinical-broker';
 import {remoteComponentMap} from './components/remote-components';
+import {AppletErrorBoundary} from './AppletErrorBoundary';
 
 export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit} = {}) {
   const receiver = useMemo(() => new RemoteReceiver({retain, release}), []);
@@ -152,7 +153,9 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
           {status === 'starting' ? (
             <div className="applet-loading">Starting isolated React applet…</div>
           ) : null}
-          <RemoteRootRenderer receiver={receiver} components={remoteComponentMap} />
+          <AppletErrorBoundary onReload={() => window.location.reload()}>
+            <RemoteRootRenderer receiver={receiver} components={remoteComponentMap} />
+          </AppletErrorBoundary>
         </section>
 
         <aside className="audit-panel" aria-label="Trusted broker audit log">

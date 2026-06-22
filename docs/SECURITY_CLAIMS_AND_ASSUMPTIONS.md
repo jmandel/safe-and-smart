@@ -213,12 +213,30 @@ We do **not** claim to prevent:
 - **Covert timing/behavioral channels** through the audited, rate-limited broker.
 
 ## 6. Known weaknesses / open items
-- **No error boundary** around `RemoteRootRenderer`: an applet that emits a
-  disallowed element throws and currently unmounts the **whole wrapper UI**
-  (availability bug; fail-closed for exfil but blanks the shell). Recommend an
-  error boundary that contains the failure to the applet surface.
-- The host CSP carries `script-src 'unsafe-eval'` for Vega's expression compiler;
-  reviewers should weigh this (mitigation: Vega CSP-safe interpreter).
+> **Phase-0 re-baseline (closed since first draft).** The items below marked
+> *(closed)* were open in the original draft and have since been fixed and
+> regression-tested; they are retained here for reviewer traceability. See §9.
+- *(closed)* **No error boundary** around `RemoteRootRenderer` — a disallowed
+  element used to unmount the whole wrapper UI. Now contained to the applet
+  surface by `AppletErrorBoundary` (reload-applet affordance; shell survives).
+- *(closed)* **Host `script-src 'unsafe-eval'`** — dropped. Vega now runs through
+  the CSP-safe AST interpreter (`vega-interpreter`), so the host CSP no longer
+  carries `unsafe-eval`.
+- *(closed)* **`importScripts` same-origin channel** — the worker prelude
+  neutralizes `importScripts` (own + prototype) and nested `Worker`/`SharedWorker`
+  before any applet code runs; with no worker `unsafe-eval`, the native cannot be
+  recovered. Verified by a hostile red-team case (zero canary hits).
+- *(closed)* **Vega `usermeta` exfil** — `usermeta` (and scheme/protocol-relative/
+  `url()` string values) are rejected by the spec sanitizer; the loader rejects all
+  network/file access. Was confirmed live, then closed and regression-tested.
+- *(closed)* **Unbounded FHIR/mutation volume** — FHIR responses carry a byte
+  budget enforced during retrieval, auto-paging is capped, request headers are
+  allowlisted, and the Remote DOM connection is wrapped by a mutation budget +
+  error-isolation gateway.
+- **Open — Phase 1:** the host-side mutation firewall still validates element/prop
+  *names and values* only at the renderer (unknown element → throw → contained).
+  A declarative Safe-DOM schema that validates each mutation record *before* it
+  reaches the receiver is the next phase.
 - The public demo runs single-origin on GitHub Pages (wrapper and launcher share
   an origin; isolation still from the opaque iframe + meta-CSP). A production PHI
   deployment should use two registrable domains + server-set headers + a managed
@@ -248,3 +266,16 @@ The claims above were checked with headless-browser probes a reviewer can rerun:
 
 Reviewers should treat §4 assumptions as the verification checklist and §2 claims
 as the properties to attack.
+
+## 9. Phase-0 hardening + standing red-team harness
+The §6 *(closed)* items landed as commits P0a–P0h and are guarded by a repeatable
+red-team harness (`tests/security/redteam.mjs`, `bun run test:redteam`): each
+`tests/security/hostile/*.entry.tsx` is built as a real applet bundle, loaded in
+the running wrapper, and asserted to produce **zero hits** on an independent canary
+server **and** to leave the shell alive. Current hostile corpus (all CONTAINED):
+- `vega-usermeta` — smuggles an exfil URL through `usermeta.embedOptions.config`.
+- `import-scripts` — `importScripts` via own-property, prototype, and nested Worker.
+- `disallowed-element` — raw `<img>` (exercises the error boundary).
+The corpus grows by one+ case per phase; a phase is not "done" until its new
+hostile cases are CONTAINED. Host-side controls are unit-tested
+(`tests/fhir-capability.test.ts`, `tests/mutation-gateway.test.ts`).

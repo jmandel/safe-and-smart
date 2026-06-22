@@ -9,7 +9,7 @@ import {
 
 export interface FhirTransport {
   readonly baseUrl: string;
-  request(request: {url: string; init: RequestInit}): Promise<unknown>;
+  request(request: {url: string; init: RequestInit; maxBytes?: number}): Promise<unknown>;
 }
 
 export interface FhirCapabilityOptions {
@@ -18,13 +18,16 @@ export interface FhirCapabilityOptions {
   timeoutMs?: number;
 }
 
-const forbiddenHeaders = new Set([
-  'authorization',
-  'cookie',
-  'host',
-  'origin',
-  'referer',
-  'proxy-authorization',
+// Allowlist (not denylist): only these caller-supplied request headers cross the
+// broker. Everything else — auth/cookie/origin/host, method-override, proxy and
+// forwarding headers — is dropped.
+const allowedRequestHeaders = new Set([
+  'accept',
+  'content-type',
+  'if-match',
+  'if-none-match',
+  'if-modified-since',
+  'prefer',
 ]);
 
 /**
@@ -58,7 +61,7 @@ export class FhirRequestCapability {
 
     const headers = new Headers();
     for (const [name, value] of Object.entries(input.init?.headers ?? {})) {
-      if (forbiddenHeaders.has(name.toLowerCase())) continue;
+      if (!allowedRequestHeaders.has(name.toLowerCase())) continue; // drop non-allowlisted
       headers.set(name, value);
     }
     headers.set('accept', 'application/fhir+json, application/json');
@@ -71,6 +74,7 @@ export class FhirRequestCapability {
       const result = await this.#transport.request({
         url: target.toString(),
         init: {method, headers, body, signal: controller.signal},
+        maxBytes: this.#maximumResponseBytes,
       });
       assertResponseBudget(result, this.#maximumResponseBytes);
       return result;
@@ -85,6 +89,14 @@ export function resolveFhirUrl(input: string, baseUrl: string): URL {
 
   if (/^[a-z][a-z\d+.-]*:/i.test(input) || input.startsWith('//')) {
     throw new Error('Applet FHIR requests must use a relative FHIR URL.');
+  }
+  // Reject backslashes, encoded path separators, and ".." traversal (raw or
+  // percent-encoded) that could escape the FHIR base after resolution.
+  if (/\\/.test(input) || /%2f|%5c|%2e/i.test(input)) {
+    throw new Error('Applet FHIR request contains an encoded separator or escape.');
+  }
+  if (/(^|\/)\.\.(\/|$)/.test(decodeURIComponent(input.split('?')[0] ?? ''))) {
+    throw new Error('Applet FHIR request contains a path traversal segment.');
   }
 
   const target = new URL(input.replace(/^\//, ''), normalizedBase);
@@ -127,7 +139,7 @@ export class LiveFhirTransport implements FhirTransport {
     this.baseUrl = baseUrl.replace(/\/$/, '');
   }
 
-  async request({url, init}: {url: string; init: RequestInit}): Promise<unknown> {
+  async request({url, init, maxBytes = 4_000_000}: {url: string; init: RequestInit; maxBytes?: number}): Promise<unknown> {
     const response = await fetch(url, {
       method: init.method ?? 'GET',
       headers: init.headers,
@@ -135,11 +147,23 @@ export class LiveFhirTransport implements FhirTransport {
       signal: init.signal,
       mode: 'cors',
       credentials: 'omit',
+      redirect: 'error', // reject any cross-base redirect rather than follow it
     });
     if (!response.ok) {
       throw new Error(`FHIR server responded ${response.status} ${response.statusText}.`);
     }
-    return response.json();
+    // Enforce the byte budget DURING retrieval: reject a declared oversize before
+    // reading, and cap the actual read so an undeclared oversized body can't be
+    // fully materialized/parsed.
+    const declared = Number(response.headers.get('content-length') ?? '0');
+    if (declared && declared > maxBytes) {
+      throw new Error(`FHIR response exceeds the ${maxBytes.toLocaleString()} byte budget (declared ${declared}).`);
+    }
+    const text = await response.text();
+    if (text.length > maxBytes) {
+      throw new Error(`FHIR response exceeds the ${maxBytes.toLocaleString()} byte budget.`);
+    }
+    return JSON.parse(text);
   }
 }
 

@@ -6,6 +6,11 @@ import type {FhirTransport} from './fhir-capability';
  * a real SMART launch. The returned transport retains the fhirclient instance;
  * the applet receives only FhirRequestCapability.request().
  */
+// Bound automatic pagination. fhirclient treats pageLimit:0 as "fetch ALL pages"
+// (unbounded network/memory); cap it. Applets that need more should page
+// explicitly via the broker's paging API.
+const MAX_AUTO_PAGES = 10;
+
 export async function createSmartFhirTransport(): Promise<FhirTransport> {
   const client = await FHIR.oauth2.ready();
   const baseUrl = client.state.serverUrl;
@@ -20,7 +25,7 @@ export async function createSmartFhirTransport(): Promise<FhirTransport> {
         body: init.body,
         signal: init.signal,
         flat: false,
-        pageLimit: 0,
+        pageLimit: MAX_AUTO_PAGES,
       } as never);
     },
   };

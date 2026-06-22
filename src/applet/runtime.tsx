@@ -6,8 +6,11 @@
 // result can be hosted anywhere (GitHub Pages, a CDN, S3) and loaded at runtime
 // by any wrapper that speaks this protocol.
 //
-// Import order matters: native-globals must run before the Remote DOM polyfills
-// so isolation reporting can tell the synthetic worker DOM from a real one.
+// Import order matters: the worker prelude runs FIRST (it neutralizes
+// importScripts / nested workers before any other code can capture them), then
+// native-globals before the Remote DOM polyfills so isolation reporting can tell
+// the synthetic worker DOM from a real one.
+import './worker-prelude';
 import './native-globals';
 import '@remote-dom/core/polyfill';
 import '@remote-dom/react/polyfill';

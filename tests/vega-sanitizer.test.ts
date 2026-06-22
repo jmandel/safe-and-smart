@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it} from 'bun:test';
 import {sanitizeVegaSpec} from '../src/host/components/vega-sanitizer';
 
 describe('sanitizeVegaSpec', () => {

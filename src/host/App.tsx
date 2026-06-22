@@ -65,23 +65,26 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
       },
     });
 
-    // Optional: load an applet bundle from a URL chosen by the wrapper (e.g.
-    // ?applet=https://host/applet.js). The TRUSTED wrapper fetches it (it has
-    // network authority); the opaque sandbox never can. We pass the source text
-    // to the launcher, which runs it as a classic blob worker. This is how a
-    // standalone bun/ts/react/zustand applet hosted anywhere is run safely
-    // against the in-context SMART launch — it gets brokered capabilities only.
-    const appletUrl = new URLSearchParams(window.location.search).get('applet');
-    const appletSourcePromise: Promise<string | undefined> = appletUrl
-      ? fetch(appletUrl, {cache: 'no-store'}).then((response) => {
-          if (!response.ok) throw new Error(`Applet fetch failed: ${response.status}`);
-          return response.text();
-        })
-      : Promise.resolve(undefined);
+    // The TRUSTED wrapper fetches the applet bundle (it has network authority);
+    // the opaque sandbox never can. Default to the built-in growth applet bundle;
+    // ?applet=<url> selects another (any CORS-enabled URL — bundled, third-party,
+    // or LLM-authored). The source text is handed to the launcher, which runs it
+    // as a classic blob worker with only brokered capabilities. This is how a
+    // standalone bun/ts/react/zustand applet hosted anywhere runs safely against
+    // the in-context SMART launch.
+    const appletUrl =
+      new URLSearchParams(window.location.search).get('applet') ??
+      `${import.meta.env.BASE_URL}applets/growth-remote.js`;
+    const appletSourcePromise: Promise<string> = fetch(appletUrl, {cache: 'no-store'}).then(
+      (response) => {
+        if (!response.ok) throw new Error(`Applet fetch failed: ${response.status}`);
+        return response.text();
+      },
+    );
 
     const transfer = async () => {
       if (transferred || !element.contentWindow) return;
-      let appletSource: string | undefined;
+      let appletSource: string;
       try {
         appletSource = await appletSourcePromise;
       } catch (loadError) {
@@ -191,9 +194,8 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
 // entry uses the inlined worker; the others are standalone bundles loaded at
 // runtime via ?applet=<url> (here same-origin; any CORS-enabled URL works).
 const REGISTRY = [
-  {label: 'Growth Explorer (built-in)', value: ''},
-  {label: 'Growth Explorer (remote bundle)', value: '/applets/growth-remote.js'},
-  {label: 'Medication Reconciliation', value: '/applets/med-recon.js'},
+  {label: 'Growth Explorer', value: ''}, // '' → wrapper loads the default growth bundle
+  {label: 'Medication Reconciliation', value: `${import.meta.env.BASE_URL}applets/med-recon.js`},
 ];
 
 function AppletPicker() {

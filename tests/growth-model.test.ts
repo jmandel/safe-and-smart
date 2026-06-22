@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it} from 'bun:test';
 import {syntheticObservations} from '../src/host/broker/mock-data';
 import {buildGrowthSpec, extractMeasurements} from '../src/applet/growth-model';
 

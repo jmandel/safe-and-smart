@@ -1,8 +1,8 @@
 name: Deploy demo to GitHub Pages
 
-# Builds the single-origin (Pages) variant and publishes it. Isolation on Pages
-# comes from the opaque sandbox iframe + the <meta> CSP in sandbox.html (Pages
-# cannot set response headers); see docs/DEPLOYMENT.md.
+# Builds the single-origin (Pages) variant with Bun and publishes it. Isolation on
+# Pages comes from the opaque sandbox iframe + the <meta> CSP in sandbox.html
+# (Pages cannot set response headers); see docs/DEPLOYMENT.md.
 
 on:
   push:
@@ -23,19 +23,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
       - uses: oven-sh/setup-bun@v2
-      - run: npm ci
-      - name: Build (single-origin Pages variant, base = /<repo>/)
+      - run: bun install --frozen-lockfile
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Build single-origin Pages variant (base = /<repo>/)
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
           VITE_SANDBOX_ORIGIN: self
-        run: |
-          npm run build           # host bundle + public/sandbox.html (meta CSP)
-          npm run build:applet    # standalone applet bundles (classic IIFE)
+        run: bun run build.ts
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

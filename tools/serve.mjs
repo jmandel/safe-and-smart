@@ -7,6 +7,25 @@ const root = fileURLToPath(new URL('../dist/', import.meta.url));
 const hostPort = Number(process.env.HOST_PORT ?? 4173);
 const sandboxPort = Number(process.env.SANDBOX_PORT ?? 4174);
 
+// Trusted-shell CSP. Mirrors the <meta> CSP baked into the host HTML so dev and
+// GitHub Pages enforce the same policy. Locks exfiltration sinks; leaves
+// connect/frame broad (trusted broker + launcher).
+const HOST_CSP = [
+  "default-src 'self'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "form-action 'none'",
+  "img-src 'self' data: blob:",
+  "media-src 'none'",
+  "font-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-eval'",
+  "worker-src 'self' blob:",
+  "connect-src 'self' https: http:",
+  "frame-src 'self' http: https: blob:",
+  "frame-ancestors 'none'",
+].join('; ');
+
 const mime = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.js', 'text/javascript; charset=utf-8'],
@@ -30,6 +49,13 @@ function headers(kind, pathname) {
       ...common,
       'Permissions-Policy':
         'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=()',
+      // Defense-in-depth for the trusted shell. The applet renders through the
+      // host's vetted components, so the host page is where img/media/form/object
+      // exfiltration sinks would live — lock them down even if a component
+      // regresses. connect-src/frame-src stay broad: the trusted broker talks to
+      // arbitrary FHIR/LLM servers and frames the launcher (not applet-controlled
+      // sinks). 'unsafe-eval' is required by Vega's expression compiler.
+      'Content-Security-Policy': HOST_CSP,
     };
   }
 

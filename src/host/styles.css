@@ -144,10 +144,20 @@ select.shell-pill option { color: #10223d; background: white; }
 .picker-current { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 .picker-backdrop { position: fixed; inset: 0; z-index: 40; }
 .picker-menu {
-  position: absolute; right: 0; top: calc(100% + 6px); z-index: 41; min-width: 260px;
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 41; width: 380px; max-width: 90vw;
+  max-height: min(70vh, 560px); overflow: auto;
   background: white; color: #10223d; border: 1px solid #d7e0eb; border-radius: 12px;
   box-shadow: 0 12px 32px rgb(10 25 48 / 22%); padding: 6px; display: grid; gap: 1px;
 }
+/* Rich (test-gallery) catalog items: label + what-it-tests blurb + capability tags. */
+.picker-item--rich { align-items: flex-start; white-space: normal; overflow: visible; gap: 8px; }
+.picker-item--rich.is-current { background: #f0f9f6; }
+.picker-body { display: grid; gap: 4px; min-width: 0; }
+.picker-label { font-weight: 650; }
+.picker-blurb { font-size: 11.5px; line-height: 1.4; color: #5a6b82; white-space: normal; }
+.picker-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 1px; }
+.picker-tag { font-size: 10px; font-weight: 600; color: #1b6a8a; background: #e8f1f7; border-radius: 999px; padding: 1px 7px; }
+.picker-add[href] { display: block; text-decoration: none; }
 .picker-group { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #8595ab; padding: 8px 10px 4px; }
 .picker-row { display: flex; align-items: center; }
 .picker-item {

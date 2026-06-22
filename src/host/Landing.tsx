@@ -37,6 +37,13 @@ const ENTRIES: Entry[] = [
     cta: 'Open Med Reconciliation →',
   },
   {
+    title: 'Encounter Cockpit — the full surface',
+    blurb:
+      'One applet exercising everything at once: author CSS, the FHIR fetch bridge, a chart + table, a streaming LLM with a brokered tool, a validated SVG, and a protected attachment — all sandboxed.',
+    href: asset('run/?applet=' + encodeURIComponent(asset('applets/encounter-cockpit.js'))),
+    cta: 'Open Encounter Cockpit →',
+  },
+  {
     title: 'Author in the browser',
     blurb:
       'Write a TSX applet, compile it in your browser (no server, no install), and run the self-contained, hash-addressed artifact in the very same locked sandbox.',

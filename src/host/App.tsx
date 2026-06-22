@@ -248,19 +248,87 @@ export function App({
 interface AppletEntry {
   label: string;
   value: string;
+  // Self-documenting test-gallery metadata (built-ins only).
+  group?: string;
+  blurb?: string;
+  tests?: string[];
 }
 
+const applet = (file: string) => `${import.meta.env.BASE_URL}applets/${file}`;
+
+// The catalog is a coverage gallery: each built-in exercises a named slice of the
+// platform so an evaluator can verify every capability end-to-end in the sandbox.
 const BUILTINS: AppletEntry[] = [
-  {label: 'Growth Explorer', value: ''},
-  {label: 'Medication Reconciliation', value: `${import.meta.env.BASE_URL}applets/med-recon.js`},
-  {label: 'Intrinsic JSX demo', value: `${import.meta.env.BASE_URL}applets/intrinsic-demo.js`},
-  {label: 'FHIR fetch bridge demo', value: `${import.meta.env.BASE_URL}applets/fhir-bridge-demo.js`},
-  {label: 'Styled vitals (CSS)', value: `${import.meta.env.BASE_URL}applets/styled-vitals.js`},
-  {label: 'Care pathway (SVG)', value: `${import.meta.env.BASE_URL}applets/careplan-diagram.js`},
-  {label: 'Order entry (form)', value: `${import.meta.env.BASE_URL}applets/order-entry-form.js`},
-  {label: 'Note summarizer (streaming)', value: `${import.meta.env.BASE_URL}applets/note-summarizer.js`},
-  {label: 'Document viewer (attachment)', value: `${import.meta.env.BASE_URL}applets/document-viewer.js`},
-  {label: 'Encounter cockpit (everything)', value: `${import.meta.env.BASE_URL}applets/encounter-cockpit.js`},
+  {
+    label: 'Growth Explorer',
+    value: '',
+    group: 'Clinical apps',
+    blurb: 'Live FHIR vital-signs → zustand store → animated Vega growth chart with reference curves and an accessible data table.',
+    tests: ['FHIR', 'Vega chart', 'Table', 'State', 'Events'],
+  },
+  {
+    label: 'Medication Reconciliation',
+    value: applet('med-recon.js'),
+    group: 'Clinical apps',
+    blurb: 'Structured med list + recent notes → LLM adjudication returning structured discrepancies and clinician-facing actions.',
+    tests: ['FHIR', 'LLM (structured JSON)', 'Audit'],
+  },
+  {
+    label: 'Encounter Cockpit — everything',
+    value: applet('encounter-cockpit.js'),
+    group: 'Clinical apps',
+    blurb: 'The whole surface in one screen: CSS, FHIR, chart + table, streaming LLM with a brokered tool, custom SVG, and a protected attachment.',
+    tests: ['CSS', 'FHIR', 'Chart', 'LLM stream + tool', 'SVG', 'Attachment'],
+  },
+  {
+    label: 'Styled Vitals — CSS',
+    value: applet('styled-vitals.js'),
+    group: 'Capability demos',
+    blurb: 'Author real CSS (grid, @media, @keyframes, gradients) installed + scoped via registerStylesheet; validated inline style.',
+    tests: ['CSS stylesheet', 'Inline style', 'ui-box/ui-inline'],
+  },
+  {
+    label: 'Care Pathway — SVG',
+    value: applet('careplan-diagram.js'),
+    group: 'Capability demos',
+    blurb: 'A custom diagram supplied as author SVG, validated to a safe subset (no script/handlers/external refs) and re-serialized.',
+    tests: ['Safe SVG', 'ui-svg'],
+  },
+  {
+    label: 'Order Entry — form',
+    value: applet('order-entry-form.js'),
+    group: 'Capability demos',
+    blurb: 'Text inputs + textarea, inline validation, keyboard Tab/Enter-to-submit, and initial focus management.',
+    tests: ['Inputs', 'Keyboard', 'Focus', 'Validation'],
+  },
+  {
+    label: 'Note Summarizer — streaming',
+    value: applet('note-summarizer.js'),
+    group: 'Capability demos',
+    blurb: 'Streaming LLM (SSE) rendered token-by-token, with a broker-executed getLatestVitals FHIR tool folded into generation.',
+    tests: ['LLM streaming', 'Tool bridge'],
+  },
+  {
+    label: 'FHIR Fetch Bridge',
+    value: applet('fhir-bridge-demo.js'),
+    group: 'Capability demos',
+    blurb: "fetch('https://fhir.internal/Observation?…') ergonomics — parsed resources, no token, no absolute URL in the applet.",
+    tests: ['FHIR bridge'],
+  },
+  {
+    label: 'Document Viewer — attachment',
+    value: applet('document-viewer.js'),
+    group: 'Capability demos',
+    blurb: 'Renders a token-protected document from an opaque handle; the applet never receives the URL or token.',
+    tests: ['Protected attachment', 'ui-image'],
+  },
+  {
+    label: 'Intrinsic JSX demo',
+    value: applet('intrinsic-demo.js'),
+    group: 'Capability demos',
+    blurb: 'A form-style app written in plain <ui-*> intrinsic TSX with familiar React events — no Remote DOM imports.',
+    tests: ['Intrinsic JSX', 'Events'],
+  },
 ];
 
 const SAVED_KEY = 'safe-and-smart.applets';
@@ -332,13 +400,37 @@ function AppletPicker() {
         <>
           <div className="picker-backdrop" onClick={() => setOpen(false)} />
           <div className="picker-menu" role="menu">
-            <div className="picker-group">Applets</div>
-            {BUILTINS.map((e) => (
-              <button key={e.label} className="picker-item" role="menuitem" onClick={() => runApplet(e.value)}>
-                <span className="picker-check">{e.value === current ? '✓' : ''}</span>
-                {e.label}
-              </button>
+            {[...new Set(BUILTINS.map((e) => e.group))].map((group) => (
+              <div key={group} className="picker-section">
+                <div className="picker-group">{group}</div>
+                {BUILTINS.filter((e) => e.group === group).map((e) => (
+                  <button
+                    key={e.label}
+                    className={`picker-item picker-item--rich${e.value === current ? ' is-current' : ''}`}
+                    role="menuitem"
+                    onClick={() => runApplet(e.value)}
+                  >
+                    <span className="picker-check">{e.value === current ? '✓' : ''}</span>
+                    <span className="picker-body">
+                      <span className="picker-label">{e.label}</span>
+                      {e.blurb ? <span className="picker-blurb">{e.blurb}</span> : null}
+                      {e.tests ? (
+                        <span className="picker-tags">
+                          {e.tests.map((t) => (
+                            <span key={t} className="picker-tag">
+                              {t}
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                ))}
+              </div>
             ))}
+            <a className="picker-add" href={`${import.meta.env.BASE_URL}author/`}>
+              ✎ Author a new applet in the browser…
+            </a>
             {saved.length > 0 ? <div className="picker-group">Saved in this browser</div> : null}
             {saved.map((e) => (
               <div key={e.value} className="picker-row">

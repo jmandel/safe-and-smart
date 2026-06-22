@@ -8,7 +8,7 @@
 //
 // Bump SAFE_DOM_SCHEMA_VERSION on any change; the handshake can use it to refuse
 // an applet built against an incompatible surface.
-export const SAFE_DOM_SCHEMA_VERSION = '1.0.0';
+export const SAFE_DOM_SCHEMA_VERSION = '1.1.0';
 
 export type SafePropType = 'string' | 'number' | 'boolean' | 'array' | 'object';
 
@@ -65,8 +65,8 @@ export const SAFE_DOM_SCHEMA: Readonly<Record<string, SafeElementSchema>> = {
   },
   'ui-button': {
     properties: {variant: 'string', disabled: 'boolean'},
-    events: ['press'],
-    eventProps: {onPress: 'press'},
+    events: ['press', 'keydown'],
+    eventProps: {onPress: 'press', onKeyDown: 'keydown'},
     children: true,
   },
   'ui-select': {

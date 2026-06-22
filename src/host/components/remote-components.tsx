@@ -7,6 +7,12 @@ import {
   type RemoteComponentRendererMap,
 } from '@remote-dom/react/host';
 import {sanitizeVegaSpec} from './vega-sanitizer';
+import {
+  toSafeNumberEvent,
+  toSafePointerEvent,
+  toSafeValueEvent,
+  toSafeKeyboardEvent,
+} from '../../shared/safe-events';
 
 function clampNumber(value: unknown, fallback: number, minimum: number, maximum: number) {
   const numeric = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -142,6 +148,7 @@ const ButtonRenderer = createRemoteComponentRenderer(function ButtonRenderer({
   variant,
   disabled,
   onPress,
+  onKeyDown,
   children,
 }: any) {
   const safeVariant = enumValue(variant, ['primary', 'secondary', 'quiet'] as const, 'secondary');
@@ -150,7 +157,8 @@ const ButtonRenderer = createRemoteComponentRenderer(function ButtonRenderer({
       type="button"
       className={`remote-button remote-button--${safeVariant}`}
       disabled={Boolean(disabled)}
-      onClick={() => onPress?.({source: 'pointer'})}
+      onClick={(event) => onPress?.(toSafePointerEvent(event.nativeEvent as never))}
+      onKeyDown={(event) => onKeyDown?.(toSafeKeyboardEvent(event.nativeEvent as never))}
     >
       {children}
     </button>
@@ -180,7 +188,7 @@ const SelectRenderer = createRemoteComponentRenderer(function SelectRenderer({
         id={inputId}
         value={String(value ?? '')}
         disabled={Boolean(disabled)}
-        onChange={(event) => onChange?.({value: event.currentTarget.value})}
+        onChange={(event) => onChange?.(toSafeValueEvent(event.nativeEvent as never))}
       >
         {safeOptions.map((option) => (
           <option key={option.value} value={option.value}>
@@ -216,7 +224,7 @@ const SliderRenderer = createRemoteComponentRenderer(function SliderRenderer({
         max={safeMaximum}
         step={clampNumber(step, 1, 0.01, 1000)}
         value={safeValue}
-        onChange={(event) => onChange?.({value: Number(event.currentTarget.value)})}
+        onChange={(event) => onChange?.(toSafeNumberEvent(event.nativeEvent as never))}
       />
     </label>
   );

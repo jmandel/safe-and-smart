@@ -12,6 +12,12 @@ import {rmSync, mkdirSync, writeFileSync} from 'node:fs';
 
 const BASE = process.env.VITE_BASE ?? '/';
 
+// Bun's syntax-minify pass intermittently mangles complex regex literals in
+// transitive deps (e.g. semver's loose regex → "Unmatched ')'"), producing a
+// non-deterministically broken bundle. Keep whitespace + identifier minification
+// (the bulk of the size win) but disable the syntax pass for reproducible builds.
+const minify = {whitespace: true, identifiers: true, syntax: false} as const;
+
 // Replace Vite's import.meta.env.* at build time so app code is unchanged.
 const def = (name: string) =>
   process.env[name] === undefined ? 'undefined' : JSON.stringify(process.env[name]);
@@ -38,7 +44,7 @@ const html = await Bun.build({
   entrypoints: ['index.html', 'run/index.html', 'fhir/index.html', 'sandbox.html'],
   outdir: 'dist',
   target: 'browser',
-  minify: true,
+  minify,
   define,
   // No publicPath: Bun emits asset URLs relative to each HTML file (./chunk from
   // the root, ../chunk from /run and /fhir), which resolve correctly under any
@@ -54,13 +60,14 @@ if (!html.success) {
 const APPLETS = [
   {entry: 'src/applet/standalone-entry.tsx', out: 'growth-remote.js'},
   {entry: 'src/applet/med-recon/entry.tsx', out: 'med-recon.js'},
+  {entry: 'src/applet/intrinsic-demo/entry.tsx', out: 'intrinsic-demo.js'},
 ];
 for (const applet of APPLETS) {
   const result = await Bun.build({
     entrypoints: [applet.entry],
     target: 'browser',
     format: 'iife',
-    minify: true,
+    minify,
     define,
   });
   if (!result.success) {

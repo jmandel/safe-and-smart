@@ -65,18 +65,24 @@ function bind(tag: string): ComponentType<any> {
   return remoteComponent(tag, element, options);
 }
 
-// Named bindings applets import. (Generated from the schema above.)
-export const Stack = bind('ui-stack');
-export const Grid = bind('ui-grid');
-export const Card = bind('ui-card');
-export const Heading = bind('ui-heading');
-export const Text = bind('ui-text');
-export const Badge = bind('ui-badge');
-export const Alert = bind('ui-alert');
-export const Button = bind('ui-button');
-export const Select = bind('ui-select');
-export const Slider = bind('ui-slider');
-export const Stat = bind('ui-stat');
-export const Table = bind('ui-table');
-export const Vega = bind('ui-vega');
-export const Code = bind('ui-code');
+// Tag → bound component map, consumed by the @safe-smart/react JSX runtime so
+// applets can write intrinsic <ui-stack> JSX (no Remote DOM imports) and still get
+// the event-wired bindings.
+export const TAG_TO_COMPONENT: Record<string, ComponentType<any>> = {};
+for (const tag of Object.keys(SAFE_DOM_SCHEMA)) TAG_TO_COMPONENT[tag] = bind(tag);
+
+// Named bindings applets import (same instances as TAG_TO_COMPONENT).
+export const Stack = TAG_TO_COMPONENT['ui-stack']!;
+export const Grid = TAG_TO_COMPONENT['ui-grid']!;
+export const Card = TAG_TO_COMPONENT['ui-card']!;
+export const Heading = TAG_TO_COMPONENT['ui-heading']!;
+export const Text = TAG_TO_COMPONENT['ui-text']!;
+export const Badge = TAG_TO_COMPONENT['ui-badge']!;
+export const Alert = TAG_TO_COMPONENT['ui-alert']!;
+export const Button = TAG_TO_COMPONENT['ui-button']!;
+export const Select = TAG_TO_COMPONENT['ui-select']!;
+export const Slider = TAG_TO_COMPONENT['ui-slider']!;
+export const Stat = TAG_TO_COMPONENT['ui-stat']!;
+export const Table = TAG_TO_COMPONENT['ui-table']!;
+export const Vega = TAG_TO_COMPONENT['ui-vega']!;
+export const Code = TAG_TO_COMPONENT['ui-code']!;

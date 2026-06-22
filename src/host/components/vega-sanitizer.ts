@@ -5,6 +5,12 @@ const forbiddenKeys = new Set([
   'image',
   'loader',
   'baseURL',
+  // vega-embed merges spec.usermeta.embedOptions over the host's trusted embed
+  // options (including a loadable `config` URL and a `loader`), which is a
+  // host-side fetch / behavior-override channel. Strip the whole subtree.
+  // (Top-level `config` is a legitimate Vega styling object — NOT forbidden; its
+  // contents are still URL-validated recursively.)
+  'usermeta',
 ]);
 
 export function sanitizeVegaSpec(untrusted: unknown): Record<string, unknown> {
@@ -25,8 +31,18 @@ export function sanitizeVegaSpec(untrusted: unknown): Record<string, unknown> {
 
 function assertSafeValue(value: unknown, path: string): void {
   if (value == null || ['string', 'number', 'boolean'].includes(typeof value)) {
-    if (typeof value === 'string' && /(?:javascript|data|https?|wss?|file):/i.test(value)) {
-      throw new Error(`External or executable URL rejected at ${path}.`);
+    if (typeof value === 'string') {
+      // Scheme URLs (incl. blob:), protocol-relative URLs (//host — dodges a
+      // scheme check), and any CSS url()/image syntax (e.g. cursor: url(...)).
+      if (/(?:javascript|data|https?|wss?|file|blob):/i.test(value)) {
+        throw new Error(`External or executable URL rejected at ${path}.`);
+      }
+      if (/^\s*\/\//.test(value)) {
+        throw new Error(`Protocol-relative URL rejected at ${path}.`);
+      }
+      if (/url\s*\(/i.test(value) || /image-set\s*\(/i.test(value)) {
+        throw new Error(`CSS url()/image reference rejected at ${path}.`);
+      }
     }
     return;
   }

@@ -270,6 +270,15 @@ const TableRenderer = createRemoteComponentRenderer(function TableRenderer({
   );
 });
 
+// Defense-in-depth: even if a loadable reference survives the sanitizer, the
+// Vega view cannot fetch anything.
+const REJECTING_VEGA_LOADER = {
+  load: () => Promise.reject(new Error('Vega network access is disabled in the sandbox.')),
+  sanitize: () => Promise.reject(new Error('Vega network access is disabled in the sandbox.')),
+  http: () => Promise.reject(new Error('Vega network access is disabled in the sandbox.')),
+  file: () => Promise.reject(new Error('Vega file access is disabled in the sandbox.')),
+} as unknown as undefined;
+
 const VegaRenderer = createRemoteComponentRenderer(function VegaRenderer({
   spec,
   ariaLabel,
@@ -298,6 +307,7 @@ const VegaRenderer = createRemoteComponentRenderer(function VegaRenderer({
       renderer: 'canvas',
       ast: true,
       tooltip: true,
+      loader: REJECTING_VEGA_LOADER,
     })
       .then((result) => {
         if (disposed) result.finalize();

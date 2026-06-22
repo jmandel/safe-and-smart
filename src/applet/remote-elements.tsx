@@ -5,127 +5,41 @@ import {
 } from '@remote-dom/core/elements';
 import {createRemoteComponent} from '@remote-dom/react';
 import type {ComponentType} from 'react';
+import {
+  SAFE_DOM_SCHEMA,
+  type SafePropType,
+} from '../shared/safe-dom-schema';
 
 export const RootElement = RemoteRootElement;
 
-export const StackElement = createRemoteElement({
-  properties: {
-    gap: {type: Number},
-    direction: {type: String},
-    align: {type: String},
-    justify: {type: String},
-  },
-});
+// Worker remote elements are GENERATED from the Safe DOM schema (the same data the
+// host firewall validates against), so the applet-constructible surface and the
+// host-accepted surface cannot drift apart.
+const PROP_CONSTRUCTOR: Record<SafePropType, unknown> = {
+  string: String,
+  number: Number,
+  boolean: Boolean,
+  array: Array,
+  object: Object,
+};
 
-export const GridElement = createRemoteElement({
-  properties: {
-    columns: {type: Number},
-    minimumColumnWidth: {type: Number},
-    gap: {type: Number},
-  },
-});
+function buildElement(schemaProps: Record<string, SafePropType>, events: readonly string[]) {
+  const properties: Record<string, {type: unknown}> = {};
+  for (const [name, type] of Object.entries(schemaProps)) {
+    properties[name] = {type: PROP_CONSTRUCTOR[type]};
+  }
+  return createRemoteElement({properties, events: [...events]} as never);
+}
 
-export const CardElement = createRemoteElement({
-  properties: {
-    tone: {type: String},
-    padding: {type: Number},
-  },
-});
-
-export const HeadingElement = createRemoteElement({
-  properties: {level: {type: Number}},
-});
-
-export const TextElement = createRemoteElement({
-  properties: {
-    tone: {type: String},
-    weight: {type: String},
-    size: {type: String},
-  },
-});
-
-export const BadgeElement = createRemoteElement({
-  properties: {tone: {type: String}},
-});
-
-export const AlertElement = createRemoteElement({
-  properties: {tone: {type: String}, title: {type: String}},
-});
-
-export const ButtonElement = createRemoteElement({
-  properties: {
-    variant: {type: String},
-    disabled: {type: Boolean},
-  },
-  events: ['press'],
-});
-
-export const SelectElement = createRemoteElement({
-  properties: {
-    label: {type: String},
-    value: {type: String},
-    options: {type: Array},
-    disabled: {type: Boolean},
-  },
-  events: ['change'],
-});
-
-export const SliderElement = createRemoteElement({
-  properties: {
-    label: {type: String},
-    value: {type: Number},
-    minimum: {type: Number},
-    maximum: {type: Number},
-    step: {type: Number},
-  },
-  events: ['change'],
-});
-
-export const StatElement = createRemoteElement({
-  properties: {
-    label: {type: String},
-    value: {type: String},
-    detail: {type: String},
-  },
-});
-
-export const TableElement = createRemoteElement({
-  properties: {
-    caption: {type: String},
-    columns: {type: Array},
-    rows: {type: Array},
-  },
-});
-
-export const VegaElement = createRemoteElement({
-  properties: {
-    spec: {type: Object},
-    ariaLabel: {type: String},
-    minimumHeight: {type: Number},
-  },
-});
-
-export const CodeElement = createRemoteElement({
-  properties: {language: {type: String}},
-});
+const elementConstructors = new Map<string, CustomElementConstructor>();
+for (const [tag, schema] of Object.entries(SAFE_DOM_SCHEMA)) {
+  elementConstructors.set(tag, buildElement(schema.properties, schema.events) as CustomElementConstructor);
+}
 
 const definitions: Array<[string, CustomElementConstructor]> = [
   ['remote-root', RootElement],
   ['remote-fragment', RemoteFragmentElement],
-  ['ui-stack', StackElement],
-  ['ui-grid', GridElement],
-  ['ui-card', CardElement],
-  ['ui-heading', HeadingElement],
-  ['ui-text', TextElement],
-  ['ui-badge', BadgeElement],
-  ['ui-alert', AlertElement],
-  ['ui-button', ButtonElement],
-  ['ui-select', SelectElement],
-  ['ui-slider', SliderElement],
-  ['ui-stat', StatElement],
-  ['ui-table', TableElement],
-  ['ui-vega', VegaElement],
-  ['ui-code', CodeElement],
+  ...[...elementConstructors.entries()],
 ];
 
 for (const [name, constructor] of definitions) {
@@ -138,23 +52,31 @@ const remoteComponent = createRemoteComponent as unknown as (
   options?: unknown,
 ) => ComponentType<any>;
 
-export const Stack = remoteComponent('ui-stack', StackElement);
-export const Grid = remoteComponent('ui-grid', GridElement);
-export const Card = remoteComponent('ui-card', CardElement);
-export const Heading = remoteComponent('ui-heading', HeadingElement);
-export const Text = remoteComponent('ui-text', TextElement);
-export const Badge = remoteComponent('ui-badge', BadgeElement);
-export const Alert = remoteComponent('ui-alert', AlertElement);
-export const Button = remoteComponent('ui-button', ButtonElement, {
-  eventProps: {onPress: {event: 'press'}},
-});
-export const Select = remoteComponent('ui-select', SelectElement, {
-  eventProps: {onChange: {event: 'change'}},
-});
-export const Slider = remoteComponent('ui-slider', SliderElement, {
-  eventProps: {onChange: {event: 'change'}},
-});
-export const Stat = remoteComponent('ui-stat', StatElement);
-export const Table = remoteComponent('ui-table', TableElement);
-export const Vega = remoteComponent('ui-vega', VegaElement);
-export const Code = remoteComponent('ui-code', CodeElement);
+function bind(tag: string): ComponentType<any> {
+  const schema = SAFE_DOM_SCHEMA[tag]!;
+  const element = elementConstructors.get(tag)!;
+  const options = schema.eventProps
+    ? {
+        eventProps: Object.fromEntries(
+          Object.entries(schema.eventProps).map(([prop, event]) => [prop, {event}]),
+        ),
+      }
+    : undefined;
+  return remoteComponent(tag, element, options);
+}
+
+// Named bindings applets import. (Generated from the schema above.)
+export const Stack = bind('ui-stack');
+export const Grid = bind('ui-grid');
+export const Card = bind('ui-card');
+export const Heading = bind('ui-heading');
+export const Text = bind('ui-text');
+export const Badge = bind('ui-badge');
+export const Alert = bind('ui-alert');
+export const Button = bind('ui-button');
+export const Select = bind('ui-select');
+export const Slider = bind('ui-slider');
+export const Stat = bind('ui-stat');
+export const Table = bind('ui-table');
+export const Vega = bind('ui-vega');
+export const Code = bind('ui-code');

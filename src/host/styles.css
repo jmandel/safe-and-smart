@@ -33,6 +33,9 @@ select.shell-pill {
 select.shell-pill option { color: #10223d; background: white; }
 .shell-main { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 18px; padding: 20px; max-width: 1600px; margin: 0 auto; }
 .applet-surface { min-width: 0; }
+/* The shadow host should not introduce its own layout box; let the contained
+   applet tree flow as the surface's content. */
+.applet-shadow-host { display: contents; }
 .applet-loading { padding: 48px; border-radius: 14px; background: white; border: 1px solid #dce3ec; text-align: center; }
 .audit-panel { background: #111b2b; color: #dbe7f8; border-radius: 14px; overflow: hidden; align-self: start; position: sticky; top: 18px; }
 .audit-panel h2 { font-size: 14px; margin: 0; padding: 14px 16px; border-bottom: 1px solid #28364a; }

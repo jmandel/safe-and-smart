@@ -12,6 +12,7 @@ import {AppletErrorBoundary} from './AppletErrorBoundary';
 import {loadAppletBundle} from './load-applet';
 import {guardConnection} from './mutation-gateway';
 import {createSafeDomFirewall} from './safe-dom-firewall';
+import {ShadowSurface} from './ShadowSurface';
 
 export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit} = {}) {
   const receiver = useMemo(() => new RemoteReceiver({retain, release}), []);
@@ -69,8 +70,14 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
             protocolVersion: PROTOCOL_VERSION,
             remoteConnection: guardConnection(receiver.connection, {
               validateRecords: createSafeDomFirewall().validateRecords,
-              onViolation: (code, detail) =>
-                broker.recordHostEvent(`mutation.${code}`, detail, 'denied'),
+              onViolation: (code, detail) => {
+                // Dev diagnostic + audit trail. A schema violation usually means the
+                // applet used an element/prop/event outside the Safe DOM surface —
+                // the generated intrinsic types (safe-dom-intrinsics.d.ts) list what's
+                // allowed.
+                console.warn(`[safe-dom] ${code}: ${detail}`);
+                broker.recordHostEvent(`mutation.${code}`, detail, 'denied');
+              },
             }),
             clinical: broker.capabilityApi(),
             context: broker.context,
@@ -166,7 +173,9 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
             <div className="applet-loading">Starting isolated React applet…</div>
           ) : null}
           <AppletErrorBoundary onReload={() => window.location.reload()}>
-            <RemoteRootRenderer receiver={receiver} components={remoteComponentMap} />
+            <ShadowSurface>
+              <RemoteRootRenderer receiver={receiver} components={remoteComponentMap} />
+            </ShadowSurface>
           </AppletErrorBoundary>
         </section>
 

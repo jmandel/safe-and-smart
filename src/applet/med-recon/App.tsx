@@ -48,6 +48,10 @@ export function App({clinical, context, securityProbe}: AppletProps) {
 
   useEffect(() => {
     let cancelled = false;
+    if (!context.patient.id) {
+      setPhase({status: 'error', message: 'No patient is in context. Relaunch via SMART and select a patient.'});
+      return;
+    }
     void (async () => {
       try {
         // 1. Gather inputs: the live structured med list + (here synthetic) notes.

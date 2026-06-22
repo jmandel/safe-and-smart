@@ -57,6 +57,13 @@ export function App({clinical, context, securityProbe}: AppProps) {
 
   useEffect(() => {
     let cancelled = false;
+    if (!context.patient.id) {
+      setLoadState({
+        status: 'error',
+        message: 'No patient is in context. Relaunch via SMART and select a patient.',
+      });
+      return;
+    }
     void Promise.all([
       clinical.fhirRequest({url: `Patient/${context.patient.id}`}),
       clinical.fhirRequest({

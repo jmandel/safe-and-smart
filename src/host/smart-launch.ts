@@ -12,10 +12,11 @@ const ISS =
   import.meta.env.VITE_SMART_ISS ??
   'https://launch.smarthealthit.org/v/r4/sim/WzIsIiIsIiIsIkFVVE8iLDAsMCwwLCIiLCIiLCIiLCIiLCIiLCIiLCIiLDAsMSwiIl0/fhir';
 const CLIENT_ID = import.meta.env.VITE_SMART_CLIENT_ID ?? 'clinical-sandbox-demo';
-// Standalone launch scopes: openid+fhirUser identify the clinician; the patient
-// picker is driven by patient-level scopes (NOT launch/patient, which is for an
-// EHR launch carrying a launch token).
-const SCOPE = import.meta.env.VITE_SMART_SCOPE ?? 'openid fhirUser patient/*.read';
+// Standalone launch scopes. launch/patient requests a patient context — in a
+// standalone launch the SMART App Launcher honors it by showing a patient picker
+// (it advertises context-standalone-patient), so the applet gets context.patient.
+// openid+fhirUser identify the clinician; patient/*.read grants read access.
+const SCOPE = import.meta.env.VITE_SMART_SCOPE ?? 'launch/patient openid fhirUser patient/*.read';
 
 export interface SmartInit {
   transport: FhirTransport;

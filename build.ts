@@ -35,12 +35,14 @@ mkdirSync('dist/applets', {recursive: true});
 
 // 1. HTML entries (landing, wrapper runtime, sandbox launcher) + their JS/CSS.
 const html = await Bun.build({
-  entrypoints: ['index.html', 'sandbox.html'],
+  entrypoints: ['index.html', 'run/index.html', 'fhir/index.html', 'sandbox.html'],
   outdir: 'dist',
   target: 'browser',
   minify: true,
   define,
-  ...(BASE !== '/' ? {publicPath: BASE} : {}),
+  // No publicPath: Bun emits asset URLs relative to each HTML file (./chunk from
+  // the root, ../chunk from /run and /fhir), which resolve correctly under any
+  // base. Runtime-constructed URLs use import.meta.env.BASE_URL (via define).
 });
 if (!html.success) {
   for (const m of html.logs) console.error(m);

@@ -1,9 +1,8 @@
 import React from 'react';
 
-// Base-aware links. The wrapper runtime is the same page with a deep-link query
-// (clean URLs — no .html). asset() builds an absolute path under the base.
+// Base-aware links into the distinct wrapper entry points (/run, /fhir). Trailing
+// slashes avoid a Pages 301. asset() builds an absolute URL under the base.
 const base = import.meta.env.BASE_URL;
-const app = (query: string) => `${base}${query}`;
 const asset = (path: string) => `${base}${path}`;
 
 interface Entry {
@@ -19,7 +18,7 @@ const ENTRIES: Entry[] = [
     title: 'SMART standalone launch',
     blurb:
       'Authenticate against the SMART App Launcher, pick a patient, and run an applet against that real, token-secured context. The applet never sees the token.',
-    href: app('?fhir=smart'),
+    href: asset('fhir/'),
     cta: 'Launch with SMART →',
     accent: true,
   },
@@ -27,14 +26,14 @@ const ENTRIES: Entry[] = [
     title: 'Growth Explorer (demo data)',
     blurb:
       'No login. Opens a synthetic-but-live FHIR patient and renders an interactive growth chart entirely inside the sandbox.',
-    href: app('?run=growth'),
+    href: asset('run/'),
     cta: 'Open Growth Explorer →',
   },
   {
     title: 'Medication Reconciliation (demo data)',
     blurb:
       'A different applet, same wrapper. Pulls the structured med list, hands it with recent notes to an LLM, and shows proposed reconciliation actions.',
-    href: app('?applet=' + encodeURIComponent(asset('applets/med-recon.js'))),
+    href: asset('run/?applet=' + encodeURIComponent(asset('applets/med-recon.js'))),
     cta: 'Open Med Reconciliation →',
   },
 ];

@@ -23,7 +23,7 @@ the bundle anywhere with permissive CORS, then run it in **any compatible wrappe
 — including the public demo or any other hosted copy — by appending `?applet=<url>`:
 
 ```
-https://joshuamandel.com/safe-and-smart/?applet=https://you.example/applet.js
+https://joshuamandel.com/safe-and-smart/run/?applet=https://you.example/applet.js
 ```
 
 The wrapper just fetches your source and sandboxes it; there is no registry,

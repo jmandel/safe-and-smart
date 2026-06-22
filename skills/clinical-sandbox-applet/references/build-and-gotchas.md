@@ -90,9 +90,12 @@ imported **before** the polyfills, and probe those, so the report honestly says
 
 The repo is bundled by **Bun only** (`build.ts`, no Vite). Two kinds of output:
 
-1. **HTML entries** — `index.html` (landing + wrapper runtime, clean-URL routing)
-   and `sandbox.html` (launcher) — built together with Bun's HTML bundler, which
-   bundles their module scripts + CSS and rewrites refs. These are ES-module
+1. **HTML entries** — `index.html` (landing), `run/index.html` + `fhir/index.html`
+   (distinct wrapper entry points → clean `/run` and `/fhir` URLs), and
+   `sandbox.html` (launcher) — built together with Bun's HTML bundler, which
+   bundles their module scripts + CSS and rewrites refs **relative to each HTML
+   file** (so subdirectory pages resolve assets correctly under any base — do NOT
+   set `publicPath`). These are ES-module
    scripts; that's fine because they load same-origin (or from a host sending CORS
    headers — GitHub Pages sends `access-control-allow-origin: *`, which is what
    lets the opaque iframe load its module launcher).

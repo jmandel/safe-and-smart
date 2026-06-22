@@ -3,7 +3,7 @@ import {createSmartFhirTransport} from './broker/smart-fhirclient-adapter';
 import type {FhirTransport} from './broker/fhir-capability';
 
 // Real SMART standalone launch (the wrapper authenticates ONCE, for itself).
-// Enable with ?fhir=smart. Defaults target the public SMART App Launcher sandbox.
+// Reached via the /fhir entry (entry-fhir.tsx). Defaults target the public SMART App Launcher sandbox.
 // Override via VITE_SMART_ISS / VITE_SMART_CLIENT_ID / VITE_SMART_SCOPE at build.
 // The SMART App Launcher encodes simulation options in the ISS path, even for a
 // standalone launch. This sim URL selects a provider standalone launch (login +
@@ -31,16 +31,6 @@ function nameOf(resource: any, fallback: string): string {
   return (n?.text ?? [...(n?.given ?? []), n?.family].filter(Boolean).join(' ')) || fallback;
 }
 
-export function isSmartMode(): boolean {
-  if (new URLSearchParams(window.location.search).get('fhir') === 'smart') return true;
-  // fhirclient persists OAuth state across the redirect; detect the callback.
-  try {
-    return Object.keys(sessionStorage).some((k) => k.startsWith('SMART_KEY') || k === 'SMART_KEY');
-  } catch {
-    return false;
-  }
-}
-
 // Resolves with the launch context after a successful SMART standalone launch.
 // On first entry there is no token, so it redirects to the authorization server
 // and the returned promise never resolves (the page navigates away).
@@ -61,8 +51,8 @@ export async function bootstrapSmart(): Promise<SmartInit> {
       iss: ISS,
       clientId: CLIENT_ID,
       scope: SCOPE,
-      // Clean redirect URI (no query). On return, fhirclient's persisted session
-      // (SMART_KEY) re-triggers the SMART path via isSmartMode().
+      // Return to this same /fhir page; on the callback, entry-fhir runs
+      // bootSmart() again and FHIR.oauth2.ready() consumes ?code&state.
       redirectUri: window.location.pathname,
     });
     return new Promise<SmartInit>(() => {}); // authorize() redirected; never resolves

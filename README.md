@@ -42,15 +42,16 @@ Trusted wrapper (real origin, has token)
 
 ## What's in here
 
-- A **landing page** and the **wrapper runtime** on a single page with clean deep
-  links (`?fhir=smart`, `?applet=<url>`, `?run=growth`).
+- A **landing page** (`/`) with distinct wrapper entry points: **`/run`**
+  (open-endpoint demo; `/run?applet=<url>` for a custom applet) and **`/fhir`**
+  (real SMART standalone launch).
 - Two applets in different domains, behind a picker, equally sandboxed:
   - **Growth Explorer** — React + Zustand + Vega-Lite growth chart.
   - **Medication Reconciliation** — sends the structured med list + notes to an
     LLM (via an OpenAI-compatible bridge) which reconciles them and proposes
     clinician review actions.
-- A **real SMART standalone launch** (`?fhir=smart`) against the SMART App
-  Launcher, plus an open-endpoint demo mode (no login).
+- A **real SMART standalone launch** (`/fhir`) against the SMART App Launcher,
+  plus an open-endpoint demo mode (no login).
 - **Runtime URL-loaded applets**: a standalone bun/ts/react app compiled to one
   classic bundle, hosted anywhere, loaded via `?applet=<url>`.
 - Bundled with **Bun** (`build.ts`, no Vite). Deploys to **GitHub Pages**.

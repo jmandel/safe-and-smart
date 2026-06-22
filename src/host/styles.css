@@ -192,3 +192,11 @@ select.shell-pill option { color: #10223d; background: white; }
 .authoring-diagnostics { margin: 0; padding: 8px 12px; list-style: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; font: 12px ui-monospace, monospace; max-height: 140px; overflow: auto; }
 .authoring-preview { border: 1px solid #e2e8f0; border-radius: 8px; overflow: auto; background: #f8fafc; padding: 12px; }
 .authoring-placeholder { color: #64748b; padding: 24px; text-align: center; }
+
+/* W3 text inputs / textarea (rendered inside the applet ShadowRoot) */
+.remote-field input[type], .remote-field textarea {
+  min-height: 38px; border: 1px solid #bdcad8; border-radius: 8px; background: white;
+  padding: 8px 10px; color: #1c2d44; font: inherit; width: 100%;
+}
+.remote-field textarea { resize: vertical; }
+.remote-field input[aria-invalid="true"], .remote-field textarea[aria-invalid="true"] { border-color: #e06666; background: #fff7f7; }

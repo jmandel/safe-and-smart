@@ -1,4 +1,4 @@
-// AUTO-GENERATED from src/shared/safe-dom-schema.ts (v1.3.0).
+// AUTO-GENERATED from src/shared/safe-dom-schema.ts (v1.4.0).
 // Do not edit by hand — run `bun tools/generate-schema-types.ts`.
 // Declares the Safe DOM intrinsic elements so applet authors can write
 // `<ui-stack gap={12}>…</ui-stack>` with full type-checking. The runtime binding
@@ -77,6 +77,32 @@ declare global {
     maximum?: number;
     step?: number;
     onChange?: (event: unknown) => void;
+  };
+  'ui-input': {
+    label?: string;
+    value?: string;
+    placeholder?: string;
+    inputType?: string;
+    disabled?: boolean;
+    autoFocus?: boolean;
+    invalid?: boolean;
+    onChange?: (event: unknown) => void;
+    onInput?: (event: unknown) => void;
+    onFocus?: (event: unknown) => void;
+    onBlur?: (event: unknown) => void;
+    onKeyDown?: (event: unknown) => void;
+  };
+  'ui-textarea': {
+    label?: string;
+    value?: string;
+    placeholder?: string;
+    rows?: number;
+    disabled?: boolean;
+    onChange?: (event: unknown) => void;
+    onInput?: (event: unknown) => void;
+    onFocus?: (event: unknown) => void;
+    onBlur?: (event: unknown) => void;
+    onKeyDown?: (event: unknown) => void;
   };
   'ui-stat': {
     label?: string;

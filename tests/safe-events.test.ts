@@ -35,6 +35,18 @@ describe('safe event snapshots', () => {
     expect(() => structuredClone(safe)).not.toThrow();
   });
 
+  it('reads value from target, not the delegation currentTarget', () => {
+    // React delegated native events have currentTarget = the root listener (no
+    // value); the real element is `target`. The builder must read `target`.
+    const delegated = {
+      type: 'input',
+      currentTarget: {}, // root container — value-less
+      target: {value: 'Lisinopril'},
+    } as never;
+    expect(toSafeValueEvent(delegated).value).toBe('Lisinopril');
+    expect(toSafeNumberEvent({type: 'change', currentTarget: {}, target: {value: '42'}} as never).value).toBe(42);
+  });
+
   it('bounds string lengths', () => {
     const safe = toSafeValueEvent(hostileEvent());
     expect(safe.value.length).toBeLessThanOrEqual(8_192);

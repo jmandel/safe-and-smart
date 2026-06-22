@@ -24,6 +24,8 @@ const ui = {
   Button: TAG_TO_COMPONENT['ui-button'],
   Select: TAG_TO_COMPONENT['ui-select'],
   Slider: TAG_TO_COMPONENT['ui-slider'],
+  Input: TAG_TO_COMPONENT['ui-input'],
+  Textarea: TAG_TO_COMPONENT['ui-textarea'],
   Stat: TAG_TO_COMPONENT['ui-stat'],
   Table: TAG_TO_COMPONENT['ui-table'],
   Vega: TAG_TO_COMPONENT['ui-vega'],

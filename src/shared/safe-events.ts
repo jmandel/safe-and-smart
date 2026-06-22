@@ -71,7 +71,10 @@ interface DomLikeEvent {
 }
 
 function targetOf(event: DomLikeEvent): DomLikeTarget {
-  return event.currentTarget ?? event.target ?? {};
+  // Prefer `target` (the element the event occurred on). For a React delegated
+  // native event, `currentTarget` is the root listener container (no value), so
+  // reading currentTarget first would always yield an empty value.
+  return event.target ?? event.currentTarget ?? {};
 }
 
 export function toSafeValueEvent(event: DomLikeEvent): SafeValueEvent {

@@ -8,7 +8,7 @@
 //
 // Bump SAFE_DOM_SCHEMA_VERSION on any change; the handshake can use it to refuse
 // an applet built against an incompatible surface.
-export const SAFE_DOM_SCHEMA_VERSION = '1.3.0';
+export const SAFE_DOM_SCHEMA_VERSION = '1.4.0';
 
 export type SafePropType = 'string' | 'number' | 'boolean' | 'array' | 'object';
 
@@ -103,6 +103,44 @@ export const SAFE_DOM_SCHEMA: Readonly<Record<string, SafeElementSchema>> = {
     },
     events: ['change'],
     eventProps: {onChange: 'change'},
+    children: false,
+  },
+  'ui-input': {
+    properties: {
+      label: 'string',
+      value: 'string',
+      placeholder: 'string',
+      inputType: 'string', // text | number | search | tel | email | date
+      disabled: 'boolean',
+      autoFocus: 'boolean',
+      invalid: 'boolean',
+    },
+    events: ['change', 'input', 'focus', 'blur', 'keydown'],
+    eventProps: {
+      onChange: 'change',
+      onInput: 'input',
+      onFocus: 'focus',
+      onBlur: 'blur',
+      onKeyDown: 'keydown',
+    },
+    children: false,
+  },
+  'ui-textarea': {
+    properties: {
+      label: 'string',
+      value: 'string',
+      placeholder: 'string',
+      rows: 'number',
+      disabled: 'boolean',
+    },
+    events: ['change', 'input', 'focus', 'blur', 'keydown'],
+    eventProps: {
+      onChange: 'change',
+      onInput: 'input',
+      onFocus: 'focus',
+      onBlur: 'blur',
+      onKeyDown: 'keydown',
+    },
     children: false,
   },
   'ui-stat': {

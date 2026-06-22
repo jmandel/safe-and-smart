@@ -13,6 +13,7 @@ import {
   toSafePointerEvent,
   toSafeValueEvent,
   toSafeKeyboardEvent,
+  toSafeFocusEvent,
 } from '../../shared/safe-events';
 
 function clampNumber(value: unknown, fallback: number, minimum: number, maximum: number) {
@@ -149,7 +150,7 @@ const ButtonRenderer = createRemoteComponentRenderer(function ButtonRenderer({
   variant,
   disabled,
   onPress,
-  onKeyDown,
+  onKeydown,
   children,
 }: any) {
   const safeVariant = enumValue(variant, ['primary', 'secondary', 'quiet'] as const, 'secondary');
@@ -159,7 +160,7 @@ const ButtonRenderer = createRemoteComponentRenderer(function ButtonRenderer({
       className={`remote-button remote-button--${safeVariant}`}
       disabled={Boolean(disabled)}
       onClick={(event) => onPress?.(toSafePointerEvent(event.nativeEvent as never))}
-      onKeyDown={(event) => onKeyDown?.(toSafeKeyboardEvent(event.nativeEvent as never))}
+      onKeyDown={(event) => onKeydown?.(toSafeKeyboardEvent(event.nativeEvent as never))}
     >
       {children}
     </button>
@@ -406,11 +407,90 @@ const SvgRenderer = createRemoteComponentRenderer(function SvgRenderer({markup, 
   );
 });
 
+const INPUT_TYPES = ['text', 'number', 'search', 'tel', 'email', 'date'] as const;
+
+const InputRenderer = createRemoteComponentRenderer(function InputRenderer({
+  label,
+  value,
+  placeholder,
+  inputType,
+  disabled,
+  autoFocus,
+  invalid,
+  onChange,
+  onInput,
+  onFocus,
+  onBlur,
+  onKeydown,
+}: any) {
+  const inputId = React.useId();
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (autoFocus) ref.current?.focus();
+  }, [autoFocus]);
+  return (
+    <label className="remote-field" htmlFor={inputId}>
+      {label ? <span>{String(label).slice(0, 120)}</span> : null}
+      <input
+        id={inputId}
+        ref={ref}
+        type={enumValue(inputType, INPUT_TYPES, 'text')}
+        // Uncontrolled: the DOM owns the text so per-keystroke values don't have to
+        // round-trip across the worker boundary (which would fight a controlled
+        // value). The applet observes edits via the change/input snapshots.
+        defaultValue={String(value ?? '')}
+        placeholder={String(placeholder ?? '').slice(0, 200)}
+        disabled={Boolean(disabled)}
+        aria-invalid={Boolean(invalid)}
+        onChange={(event) => onChange?.(toSafeValueEvent(event.nativeEvent as never))}
+        onInput={(event) => onInput?.(toSafeValueEvent(event.nativeEvent as never))}
+        onFocus={(event) => onFocus?.(toSafeFocusEvent(event.nativeEvent as never))}
+        onBlur={(event) => onBlur?.(toSafeFocusEvent(event.nativeEvent as never))}
+        onKeyDown={(event) => onKeydown?.(toSafeKeyboardEvent(event.nativeEvent as never))}
+      />
+    </label>
+  );
+});
+
+const TextareaRenderer = createRemoteComponentRenderer(function TextareaRenderer({
+  label,
+  value,
+  placeholder,
+  rows,
+  disabled,
+  onChange,
+  onInput,
+  onFocus,
+  onBlur,
+  onKeydown,
+}: any) {
+  const inputId = React.useId();
+  return (
+    <label className="remote-field" htmlFor={inputId}>
+      {label ? <span>{String(label).slice(0, 120)}</span> : null}
+      <textarea
+        id={inputId}
+        rows={Math.round(clampNumber(rows, 3, 1, 40))}
+        defaultValue={String(value ?? '')}
+        placeholder={String(placeholder ?? '').slice(0, 200)}
+        disabled={Boolean(disabled)}
+        onChange={(event) => onChange?.(toSafeValueEvent(event.nativeEvent as never))}
+        onInput={(event) => onInput?.(toSafeValueEvent(event.nativeEvent as never))}
+        onFocus={(event) => onFocus?.(toSafeFocusEvent(event.nativeEvent as never))}
+        onBlur={(event) => onBlur?.(toSafeFocusEvent(event.nativeEvent as never))}
+        onKeyDown={(event) => onKeydown?.(toSafeKeyboardEvent(event.nativeEvent as never))}
+      />
+    </label>
+  );
+});
+
 export const remoteComponentMap: RemoteComponentRendererMap = new Map([
   ['remote-fragment', RemoteFragmentRenderer],
   ['ui-box', BoxRenderer],
   ['ui-inline', InlineRenderer],
   ['ui-svg', SvgRenderer],
+  ['ui-input', InputRenderer],
+  ['ui-textarea', TextareaRenderer],
   ['ui-stack', StackRenderer],
   ['ui-grid', GridRenderer],
   ['ui-card', CardRenderer],

@@ -259,6 +259,7 @@ const BUILTINS: AppletEntry[] = [
   {label: 'Care pathway (SVG)', value: `${import.meta.env.BASE_URL}applets/careplan-diagram.js`},
   {label: 'Order entry (form)', value: `${import.meta.env.BASE_URL}applets/order-entry-form.js`},
   {label: 'Note summarizer (streaming)', value: `${import.meta.env.BASE_URL}applets/note-summarizer.js`},
+  {label: 'Document viewer (attachment)', value: `${import.meta.env.BASE_URL}applets/document-viewer.js`},
 ];
 
 const SAVED_KEY = 'safe-and-smart.applets';

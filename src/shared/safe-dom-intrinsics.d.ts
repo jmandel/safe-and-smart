@@ -1,4 +1,4 @@
-// AUTO-GENERATED from src/shared/safe-dom-schema.ts (v1.4.0).
+// AUTO-GENERATED from src/shared/safe-dom-schema.ts (v1.5.0).
 // Do not edit by hand — run `bun tools/generate-schema-types.ts`.
 // Declares the Safe DOM intrinsic elements so applet authors can write
 // `<ui-stack gap={12}>…</ui-stack>` with full type-checking. The runtime binding
@@ -122,6 +122,10 @@ declare global {
   'ui-svg': {
     markup?: string;
     ariaLabel?: string;
+  };
+  'ui-image': {
+    handle?: string;
+    alt?: string;
   };
   'ui-code': {
     language?: string;

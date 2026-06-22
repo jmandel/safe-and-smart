@@ -66,6 +66,7 @@ const APPLETS = [
   {entry: 'src/applet/careplan-diagram/entry.tsx', out: 'careplan-diagram.js'},
   {entry: 'src/applet/order-entry-form/entry.tsx', out: 'order-entry-form.js'},
   {entry: 'src/applet/note-summarizer/entry.tsx', out: 'note-summarizer.js'},
+  {entry: 'src/applet/document-viewer/entry.tsx', out: 'document-viewer.js'},
 ];
 for (const applet of APPLETS) {
   const result = await Bun.build({

@@ -30,6 +30,7 @@ const ui = {
   Table: TAG_TO_COMPONENT['ui-table'],
   Vega: TAG_TO_COMPONENT['ui-vega'],
   Svg: TAG_TO_COMPONENT['ui-svg'],
+  Image: TAG_TO_COMPONENT['ui-image'],
   Code: TAG_TO_COMPONENT['ui-code'],
 };
 

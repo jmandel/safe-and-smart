@@ -8,7 +8,7 @@
 //
 // Bump SAFE_DOM_SCHEMA_VERSION on any change; the handshake can use it to refuse
 // an applet built against an incompatible surface.
-export const SAFE_DOM_SCHEMA_VERSION = '1.4.0';
+export const SAFE_DOM_SCHEMA_VERSION = '1.5.0';
 
 export type SafePropType = 'string' | 'number' | 'boolean' | 'array' | 'object';
 
@@ -162,6 +162,13 @@ export const SAFE_DOM_SCHEMA: Readonly<Record<string, SafeElementSchema>> = {
     // `markup` is author SVG; the renderer parses + validates it against the safe
     // subset (no script/handlers/external refs) and re-serializes before render.
     properties: {markup: 'string', ariaLabel: 'string'},
+    events: [],
+    children: false,
+  },
+  'ui-image': {
+    // `handle` is an OPAQUE attachment handle from clinical.fetchAttachment — NOT a
+    // URL. The renderer resolves it host-side; the applet cannot set a raw src.
+    properties: {handle: 'string', alt: 'string'},
     events: [],
     children: false,
   },

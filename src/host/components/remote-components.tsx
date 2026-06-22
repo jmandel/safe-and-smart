@@ -8,6 +8,7 @@ import {
 } from '@remote-dom/react/host';
 import {sanitizeVegaSpec} from './vega-sanitizer';
 import {sanitizeSvgMarkup} from '../safe-svg-validator';
+import {getAttachment} from '../attachment-registry';
 import {
   toSafeNumberEvent,
   toSafePointerEvent,
@@ -484,11 +485,28 @@ const TextareaRenderer = createRemoteComponentRenderer(function TextareaRenderer
   );
 });
 
+// Protected attachment. The applet passes only an opaque `handle` (from
+// clinical.fetchAttachment); the URL is resolved host-side from the registry, so an
+// applet can never set a raw src or learn the token-protected URL. The blob: src is
+// permitted by the host CSP (img-src blob:).
+const ImageRenderer = createRemoteComponentRenderer(function ImageRenderer({handle, alt}: any) {
+  const attachment = typeof handle === 'string' ? getAttachment(handle) : undefined;
+  if (!attachment) return <div className="remote-image-error">Attachment unavailable.</div>;
+  return (
+    <img
+      className="remote-image"
+      src={attachment.url}
+      alt={String(alt ?? 'attachment').slice(0, 200)}
+    />
+  );
+});
+
 export const remoteComponentMap: RemoteComponentRendererMap = new Map([
   ['remote-fragment', RemoteFragmentRenderer],
   ['ui-box', BoxRenderer],
   ['ui-inline', InlineRenderer],
   ['ui-svg', SvgRenderer],
+  ['ui-image', ImageRenderer],
   ['ui-input', InputRenderer],
   ['ui-textarea', TextareaRenderer],
   ['ui-stack', StackRenderer],

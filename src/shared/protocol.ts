@@ -127,6 +127,24 @@ export interface ClinicalCapabilityApi {
   // Register a validated, scoped stylesheet for this applet's surface. Resolves
   // {ok:false,error} if the CSS is rejected (url/scheme/@import/escape-hatch).
   registerStylesheet(input: Stylesheet): Promise<StylesheetResult>;
+  // Fetch a (token-protected) attachment host-side and return an OPAQUE handle to
+  // render via <ui-image>. The applet never receives the URL or the token.
+  fetchAttachment(input: AttachmentRequest): Promise<AttachmentResult>;
+}
+
+export const AttachmentRequestSchema = z.object({
+  // A relative FHIR reference (e.g. "Binary/123" or a DocumentReference content
+  // url). The demo also accepts "demo:summary" to mint a generated sample doc.
+  url: z.string().min(1).max(4096),
+  title: z.string().max(200).optional(),
+});
+export type AttachmentRequest = z.infer<typeof AttachmentRequestSchema>;
+
+export interface AttachmentResult {
+  ok: boolean;
+  handle?: string;
+  contentType?: string;
+  error?: string;
 }
 
 export interface HostHandshake {

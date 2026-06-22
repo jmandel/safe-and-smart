@@ -9,6 +9,7 @@ import {
 import {ClinicalBroker, type AuditRecord} from './broker/clinical-broker';
 import {remoteComponentMap} from './components/remote-components';
 import {AppletErrorBoundary} from './AppletErrorBoundary';
+import {loadAppletBundle} from './load-applet';
 
 export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit} = {}) {
   const receiver = useMemo(() => new RemoteReceiver({retain, release}), []);
@@ -51,10 +52,16 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
           if (input.protocolVersion !== PROTOCOL_VERSION) {
             throw new Error(`Protocol version ${input.protocolVersion} is not supported.`);
           }
-          // Identity is recorded for audit/display, not used to gate access:
-          // containment comes from the sandbox, so the wrapper can safely run any
-          // applet (bundled or loaded from a URL) regardless of its declared id.
-          broker.context.applet = {id: input.appletId, version: input.appletVersion};
+          // Authoritative identity is HOST-derived (source URL + artifact SHA-256),
+          // not the worker-declared id (which is recorded only as a consistency
+          // note). Containment doesn't depend on this; it's for audit/provenance.
+          broker.context.applet = {
+            id: appletIdentity.url,
+            version: appletIdentity.sha256 ? `sha256:${appletIdentity.sha256.slice(0, 16)}` : 'unknown',
+          };
+          if (input.appletId !== undefined) {
+            console.info('applet declared id', input.appletId, input.appletVersion, '— host identity', appletIdentity.url, appletIdentity.sha256.slice(0, 16));
+          }
           setStatus('connected');
           return {
             protocolVersion: PROTOCOL_VERSION,
@@ -76,12 +83,11 @@ export function App({smartInit}: {smartInit?: import('./smart-launch').SmartInit
     const appletUrl =
       new URLSearchParams(window.location.search).get('applet') ??
       `${import.meta.env.BASE_URL}applets/growth-remote.js`;
-    const appletSourcePromise: Promise<string> = fetch(appletUrl, {cache: 'no-store'}).then(
-      (response) => {
-        if (!response.ok) throw new Error(`Applet fetch failed: ${response.status}`);
-        return response.text();
-      },
-    );
+    let appletIdentity = {url: appletUrl, sha256: ''};
+    const appletSourcePromise: Promise<string> = loadAppletBundle(appletUrl).then((loaded) => {
+      appletIdentity = {url: loaded.url, sha256: loaded.sha256};
+      return loaded.source;
+    });
 
     const transfer = async () => {
       if (transferred || !element.contentWindow) return;

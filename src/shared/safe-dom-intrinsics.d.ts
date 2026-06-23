@@ -1,5 +1,5 @@
 // AUTO-GENERATED from src/shared/safe-dom-schema.ts (v1.7.0).
-// Do not edit by hand — run `bun tools/generate-schema-types.ts`.
+// Do not edit by hand — run `bun tools/generate-schema-types.ts` (`bun run gen:types`).
 // Declares the Safe DOM intrinsic elements so applet authors can write
 // `<ui-stack gap={12}>…</ui-stack>` with full type-checking. The runtime binding
 // for intrinsic JSX lands in Phase 2 (@safe-smart/react); these types describe the

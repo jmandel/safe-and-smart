@@ -27,12 +27,15 @@ function propsInterface(tag: string): string {
   return lines.join('\n');
 }
 
-const blocks = Object.keys(SAFE_DOM_SCHEMA)
-  .map((tag) => `  '${tag}': {\n${propsInterface(tag)}\n  };`)
-  .join('\n');
+// Build the full .d.ts text. Pure (no I/O) so a drift test can compare it to the
+// checked-in file without regenerating on disk.
+export function renderIntrinsics(): string {
+  const blocks = Object.keys(SAFE_DOM_SCHEMA)
+    .map((tag) => `  '${tag}': {\n${propsInterface(tag)}\n  };`)
+    .join('\n');
 
-const output = `// AUTO-GENERATED from src/shared/safe-dom-schema.ts (v${SAFE_DOM_SCHEMA_VERSION}).
-// Do not edit by hand — run \`bun tools/generate-schema-types.ts\`.
+  return `// AUTO-GENERATED from src/shared/safe-dom-schema.ts (v${SAFE_DOM_SCHEMA_VERSION}).
+// Do not edit by hand — run \`bun tools/generate-schema-types.ts\` (\`bun run gen:types\`).
 // Declares the Safe DOM intrinsic elements so applet authors can write
 // \`<ui-stack gap={12}>…</ui-stack>\` with full type-checking. The runtime binding
 // for intrinsic JSX lands in Phase 2 (@safe-smart/react); these types describe the
@@ -47,7 +50,13 @@ ${blocks}
   }
 }
 `;
+}
 
-const target = join(import.meta.dir, '..', 'src', 'shared', 'safe-dom-intrinsics.d.ts');
-writeFileSync(target, output);
-console.log(`Wrote ${target} (${Object.keys(SAFE_DOM_SCHEMA).length} elements, schema v${SAFE_DOM_SCHEMA_VERSION}).`);
+export const INTRINSICS_PATH = join(import.meta.dir, '..', 'src', 'shared', 'safe-dom-intrinsics.d.ts');
+
+// Only write when run directly (`bun tools/generate-schema-types.ts`); importing
+// this module (e.g. from the drift test) has no side effects.
+if (import.meta.main) {
+  writeFileSync(INTRINSICS_PATH, renderIntrinsics());
+  console.log(`Wrote ${INTRINSICS_PATH} (${Object.keys(SAFE_DOM_SCHEMA).length} elements, schema v${SAFE_DOM_SCHEMA_VERSION}).`);
+}

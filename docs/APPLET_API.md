@@ -152,6 +152,9 @@ session.audit({
 });
 ```
 
+Only `message` is required — `code`, `detail`, and `kind` are optional (`kind`
+defaults to `'application'`), so `session.audit({message: 'did X'})` is valid.
+
 Do not put bulk PHI in `message`; prefer a `code` + minimal `detail`.
 
 ## `session.probe`

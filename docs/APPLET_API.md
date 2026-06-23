@@ -1,153 +1,197 @@
-# Applet API guide
+# Applet API — `session` + components
 
-## App component
+An applet is a sandboxed React component. It has **no ambient powers** — no network,
+no DOM, no storage. Everything it can do arrives as a single prop, `session`, plus
+the component set it renders with. This is the whole surface.
 
-The spike app receives three props:
+```tsx
+import {runApplet} from './runtime';
+import {Stack, Heading, Text, Button} from './remote-elements';
 
-```ts
-interface AppProps {
-  clinical: ClinicalCapabilityApi;
-  context: ClinicalContext;
-  securityProbe: SecurityProbeResult;
+function App({session}) {
+  return (
+    <Stack gap={12}>
+      <Heading level={2}>Hello, {session.smart.patient.display}</Heading>
+      <Button onPress={() => session.audit({message: 'said hi'})}>Log</Button>
+    </Stack>
+  );
 }
+
+runApplet(App, {appletId: 'org.example.hello', appletVersion: '0.1.0'});
 ```
 
-See `src/applet/App.tsx` for a complete example.
+`session` is **one object with five namespaces** (each one a brokered host handler),
+plus a worker-side isolation report:
 
-## FHIR
+| `session.*` | concern | also reachable as |
+| --- | --- | --- |
+| `session.smart` | SMART-on-FHIR launch context **and** scoped FHIR access | `fetch('https://fhir.internal/…')` |
+| `session.ai` | the language model | `fetch('https://llm.internal/v1/…')` (OpenAI shape) |
+| `session.styles` | install validated CSS for your surface | — |
+| `session.files` | open token-protected attachments | — |
+| `session.audit` | write to the trusted audit log | — |
+| `session.probe` | the worker's own sandbox self-test (read-only) | — |
 
-```tsx
-React.useEffect(() => {
-  let cancelled = false;
+---
 
-  clinical.fhirRequest({
-    url: `Observation?patient=${encodeURIComponent(context.patient.id)}&_count=500`,
-  }).then((bundle) => {
-    if (!cancelled) setBundle(bundle);
-  });
+## `session.smart` — context + FHIR
 
-  return () => { cancelled = true; };
-}, [clinical, context.patient.id]);
+Mirrors a `fhirclient` SMART client: the launch context (data you read) and the
+FHIR calls (scoped to the granted token, attached host-side) live on one object.
+
+```ts
+session.smart.patient      // { id, display }
+session.smart.user         // { id, display, practitioner? }
+session.smart.encounter    // { id } | undefined
+session.smart.scopes       // string[]  — the authorization envelope
+session.smart.fhirBaseUrl  // string
+
+session.smart.search(type, params?)   // GET a search  → Bundle
+session.smart.read(type, id)          // GET one resource
+session.smart.request(url, init?)     // escape hatch: any relative FHIR URL
 ```
 
-The URL is relative to the active FHIR base. Do not include authorization headers.
+```tsx
+const vitals = await session.smart.search('Observation', {
+  patient: session.smart.patient.id,
+  category: 'vital-signs',
+  _count: 200,
+});
+const patient = await session.smart.read('Patient', session.smart.patient.id);
+```
 
-## LLM
+You never see a bearer token or an absolute server URL. The broker validates the
+URL (relative-only, no traversal), attaches the token, enforces byte budgets, and
+audits the call. Writes are off by default. **Bring your own client:** point
+`fhirclient` at `https://fhir.internal/` and it works unchanged.
+
+## `session.ai` — the model
+
+OpenAI-compatible. `profile` (the `model` field) selects an approved, covered model
+profile — there is no API key in the applet.
 
 ```tsx
-const response = await clinical.llmComplete({
-  profile: 'baa-clinical-summary-demo',
-  messages: [
-    {
-      role: 'system',
-      content: 'Summarize the evidence and state uncertainty.',
-    },
-    {
-      role: 'user',
-      content: JSON.stringify(evidence),
-    },
-  ],
-  responseSchema: {
-    type: 'object',
-    properties: {
-      summary: {type: 'string'},
-      evidenceIds: {type: 'array', items: {type: 'string'}},
-    },
-    required: ['summary', 'evidenceIds'],
-  },
+// non-streaming, optional structured output
+const res = await session.ai.complete({
+  profile: 'clinical-summary',
+  messages: [{role: 'user', content: JSON.stringify(evidence)}],
+  responseSchema: {type: 'object', properties: {summary: {type: 'string'}}},
+});
+
+// streaming — deltas arrive through the callback
+await session.ai.stream(
+  {profile: 'summarizer', messages: [{role: 'user', content: '…'}]},
+  (delta) => setText((t) => t + delta),
+);
+```
+
+**Bring your own client:** the `openai` SDK pointed at `baseURL:
+'https://llm.internal/v1'` works (including `stream: true`). A model profile may
+invoke broker-side **tools** (e.g. a scoped FHIR read) and fold the result into the
+answer — the applet never gets that access and the model can't reach beyond the
+tool allowlist.
+
+## `session.styles` — your own CSS
+
+Express real design (grids, `@media`, `@keyframes`, gradients) beyond the component
+props. You hand over CSS; the host validates it (no `url()`/scheme/`@import`/escape
+hatch) and installs it **scoped to your ShadowRoot** — it cannot touch the wrapper
+chrome. Reference your classes via `<Box className>` / `<Inline className>`.
+
+```tsx
+const css = `.grid { display:grid; gap:12px; }
+@media (max-width:480px){ .grid{ grid-template-columns:1fr; } }`;
+useEffect(() => { session.styles.add(css); }, []);
+// …
+<Box className="grid">…</Box>
+```
+
+`add()` resolves `{ok:false, error}` if the CSS is rejected (and the rejection is
+audited) — never silently dropped.
+
+## `session.files` — protected documents
+
+Display a token-protected attachment (a scanned doc, a PDF, an image) **without ever
+holding its URL or token**. You get an opaque `handle`; the host resolves it to a
+blob it minted, and `<Image handle>` renders it.
+
+```tsx
+const r = await session.files.open({url: 'Binary/123', title: 'Discharge summary'});
+if (r.ok) setHandle(r.handle);
+// …
+{handle ? <Image handle={handle} alt="Discharge summary" /> : null}
+```
+
+The applet cannot set a raw `src` — the element only accepts a `handle` — so the
+image can't be pointed at an external URL even by mistake.
+
+## `session.audit` — accountability
+
+Record a clinician action to the trusted, append-only log (production: forwarded to
+the EHR audit/SIEM). The host already auto-audits every brokered call; this adds
+your own semantic events. The applet can **write but not read** the log.
+
+```ts
+session.audit({
+  code: 'applet.review-accepted',         // optional closed vocabulary
+  message: `accepted reconciliation for ${med}`,  // bounded, sanitized
 });
 ```
 
-The spike returns plain text from a deterministic mock. A production profile should enforce the response schema in the trusted adapter.
+Do not put bulk PHI in `message`; prefer a `code` + minimal `detail`.
 
-## UI elements in the spike
+## `session.probe`
 
-```ts
-Stack
-Grid
-Card
-Heading
-Text
-Badge
-Alert
-Button
-Select
-Slider
-Stat
-Table
-Vega
-Code
-```
-
-These are React components backed by Remote DOM custom elements. Properties and event payloads are serialized; do not pass class instances, DOM nodes, cyclic objects, or very large values.
-
-## Events
-
-Remote events arrive as custom event-like objects. The spike uses:
-
-```tsx
-<Select
-  value={metric}
-  options={[...]}
-  onChange={(event) => setMetric(event.detail.value)}
-/>
-
-<Button onPress={() => doSomething()}>
-  Run
-</Button>
-```
-
-A production SDK should wrap these details with strongly typed ergonomic callbacks such as `onValueChange(value)`.
-
-## Vega
-
-```tsx
-<Vega
-  spec={{
-    $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-    data: {values: rows},
-    mark: {type: 'line', point: true},
-    encoding: {
-      x: {field: 'date', type: 'temporal'},
-      y: {field: 'value', type: 'quantitative'},
-    },
-  }}
-  ariaLabel="Longitudinal laboratory trend"
-  minimumHeight={360}
-/>
-```
-
-Use inline `data.values`. URL-backed data, images, hyperlinks, and external loaders are rejected.
-
-## Audit
+The worker's own isolation self-test, for display/diagnostics:
 
 ```ts
-await clinical.audit({
-  kind: 'application',
-  message: 'Clinician switched to parent view',
-  detail: {view: 'parent'},
-});
+session.probe.directNetworkBlocked   // true — fetch() to the real network is dead
+session.probe.directDomUnavailable
+session.probe.persistentStorageBlocked
 ```
 
-Do not place PHI in the free-text message. Production SDKs should prefer structured event names and host-derived context.
+---
 
-## Programming constraints
+## Components
 
-Inside the worker:
+You render with a curated, host-rendered element set (not raw HTML — there is no DOM
+in the worker, and raw tags would be exfiltration vectors). Two equivalent styles:
 
-- `window` and a real browser `document` are unavailable;
-- the Remote DOM polyfill supplies enough DOM APIs for React and registered remote elements;
-- direct network requests are blocked by CSP;
-- persistent origin storage is expected to fail in the opaque-origin context;
-- browser APIs that depend on actual DOM, navigation, CSSOM, or canvas are not portable;
-- pure JavaScript computation and worker-compatible libraries are appropriate.
+```tsx
+// capitalized components (import or, in the playground, the `ui` global)
+import {Stack, Card, Button, Input, Table, Vega, Svg, Image, Box} from './remote-elements';
+<Stack gap={12}><Button onPress={fn}>Go</Button></Stack>
 
-## Adding a host component
+// or intrinsic JSX via @safe-smart/react (no imports)
+<ui-stack gap={12}><ui-button onPress={fn}>Go</ui-button></ui-stack>
+```
 
-1. Define a `RemoteElement` in `src/applet/remote-elements.tsx` with explicit properties/events.
-2. Create its applet React wrapper with `createRemoteComponent()`.
-3. Add a host renderer in `src/host/components/remote-components.tsx`.
-4. Validate, clamp, and copy every untrusted property.
-5. Normalize event payloads before sending them back.
-6. Add unit, hostile-payload, accessibility, and browser tests.
-7. Document performance and compatibility limits.
+Layout/text: `Stack`, `Grid`, `Box`, `Inline`, `Card`, `Heading`, `Text`, `Badge`,
+`Alert`, `Stat`, `Code`. Interactive: `Button`, `Select`, `Slider`, `Input`,
+`Textarea`. Data/graphics: `Table`, `Vega`, `Svg`, `Image`. `Box`/`Inline` accept a
+validated `style` object + `className`.
+
+**Events** arrive as bounded, structured-clonable snapshots — no live DOM nodes, no
+functions, capped strings:
+
+```tsx
+<Input label="Dose" onChange={(e) => setDose(e.detail.value)} onKeyDown={(e) => {
+  if (e.detail.key === 'Enter') submit();
+}} />
+<Select options={opts} onChange={(e) => setX(e.detail.value)} />
+<Button onPress={(e) => run()}>Run</Button>
+```
+
+`Vega` takes an inline-data Vega-Lite spec (URL-backed data, images, and external
+loaders are rejected). `Svg` takes `markup` validated to a safe subset.
+
+## Constraints
+
+- No `window`/real `document`, no `fetch` to the real network, no persistent storage.
+- Props and event payloads are structured-cloned — no class instances, DOM nodes,
+  cyclic objects, or huge values across the boundary.
+- Anything off the Safe DOM schema (unknown element, prop, attribute, or event) is
+  rejected by the host mutation firewall and contained by the error boundary.
+
+See **ARCHITECTURE.md** for how this is enforced and **HOST_API.md** for the
+wrapper-side handler registry.

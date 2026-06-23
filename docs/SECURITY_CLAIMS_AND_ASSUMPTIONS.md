@@ -206,7 +206,7 @@ We do **not** claim to prevent:
 - The **FHIR server's own authorization** — scope enforcement is the server's job;
   the broker is intentionally broad within the granted SMART scopes.
 - **Capability abuse within granted scope** — e.g., an applet laundering data into
-  a FHIR write or an `llmComplete` prompt sent to a logged/third-party model.
+  a FHIR write or a `session.ai` prompt sent to a logged/third-party model.
   Mitigated by broker policy (read-only default, quotas, LLM-destination
   governance, audit), not eliminated; reviewers should treat the **broker policy**
   as the control here, not the sandbox.

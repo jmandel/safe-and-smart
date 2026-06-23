@@ -1,227 +1,124 @@
-# Spike architecture
+# Architecture
 
-## Goals
+One **trusted wrapper** does the SMART-on-FHIR launch once, holds the token, and runs
+many **untrusted applets** inside it. Safety is a property of the wrapper, not a
+promise each applet keeps. An applet can be first-party, third-party, or
+LLM-written; it still cannot leak the token, call home, or touch the DOM.
 
-The spike tests a browser-only runtime that gives an applet:
+## The containment stack
 
-- ordinary React programming ergonomics;
-- broad clinician-scoped FHIR access;
-- approved LLM inference;
-- rich and performant graphics;
-- no raw credentials and no generic outbound network primitive.
-
-It intentionally does **not** enforce resource-specific FHIR profiles. The active SMART grant and the FHIR server remain the principal semantic authorization boundary.
-
-## Components
-
-```mermaid
-flowchart TB
-  subgraph HOST[Trusted outer shell — hospital application origin]
-    SMART[SMART client / fhirclient\nOAuth token retained here]
-    FHIR[FHIR request capability\nrelative URL, budgets, audit]
-    LLM[LLM profile capability\nBAA-covered adapter]
-    POLICY[Session policy\npatient, user, applet, read/write mode]
-    RENDER[Trusted React renderers\nUI SDK + Vega-Lite]
-    AUDIT[Capability audit]
-  end
-
-  subgraph FRAME[Cross-origin sandboxed iframe — opaque origin]
-    BOOT[Small trusted bootstrap]
-    subgraph WORKER[Dedicated Worker — untrusted applet environment]
-      REACT[React applet]
-      RDOM[Remote DOM polyfill]
-      LOCAL[Browser-side computation]
-    end
-  end
-
-  EHR[(FHIR server)]
-  MODEL[(Approved LLM endpoint)]
-
-  REACT <-->|Remote DOM mutations + events| RENDER
-  REACT <-->|typed MessagePort calls| FHIR
-  REACT <-->|typed MessagePort calls| LLM
-  FHIR --> SMART --> EHR
-  LLM --> MODEL
-  FHIR --> AUDIT
-  LLM --> AUDIT
-  POLICY --> FHIR
-  POLICY --> LLM
-  BOOT --> WORKER
+```
+┌─ Trusted wrapper (real origin; holds the SMART token) ───────────────────────┐
+│  • Handler registry (the broker): smart / ai / styles / files / audit        │
+│  • Host-side validators: Safe DOM mutation firewall, CSS + SVG validators,    │
+│    Vega sanitizer, FHIR URL/budget/scope enforcement                          │
+│  • Renders the applet's element tree with vetted React components in a        │
+│    ShadowRoot; CSP forbids every resource origin reachable from CSS           │
+│                                                                               │
+│   ┌─ Opaque-origin iframe  (sandbox="allow-scripts", no allow-same-origin) ─┐ │
+│   │  • Launcher; its own strict CSP                                          │ │
+│   │   ┌─ Dedicated Worker  (classic blob worker) ──────────────────────────┐│ │
+│   │   │  • The applet: real React + your libraries                          ││ │
+│   │   │  • NO DOM, NO network (connect-src 'none'), NO storage              ││ │
+│   │   │  • UI via Remote DOM → serialized mutations → host                  ││ │
+│   │   │  • Capabilities via `session.*` over a MessagePort                  ││ │
+│   │   └────────────────────────────────────────────────────────────────────┘│ │
+│   └──────────────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Trust boundaries
+Three nested boundaries, each independently sufficient for most threats: an
+opaque-origin sandboxed iframe, a dedicated worker with no DOM/network/storage, and
+a host-side mutation firewall that validates every UI change before it renders.
 
-### Trusted shell
+## How UI works (Remote DOM)
 
-The shell is part of the hospital-approved computing base. It owns:
+The applet runs **real React** in the worker, against a polyfilled DOM. Instead of
+touching a real document, React's output becomes a stream of serialized **mutation
+records** (insert/remove/update) sent over the MessagePort. The host:
 
-- SMART launch and token refresh;
-- the live `fhirclient` instance;
-- LLM provider credentials or a covered same-origin inference adapter;
-- protocol validation, quotas, cancellation, and audit;
-- all actual DOM nodes and host graphics libraries;
-- applet identity, version, and launch context.
+1. runs every record through the **Safe DOM mutation firewall** — the element must be
+   in the versioned schema, every property/event must be declared for that element,
+   raw attributes are rejected, and node/depth/text quotas bound resource use;
+2. renders the validated tree with a fixed map of **vetted React components**
+   (`remote-components.tsx`) that coerce/clamp every prop;
+3. mounts it inside a **ShadowRoot** so applet CSS is scoped to its surface.
 
-Its dependency surface must be kept small, pinned, scanned, and deployed without third-party runtime scripts.
+So even an applet that bypasses the SDK and drives raw mutations cannot introduce an
+undeclared element, prop, attribute, or event. (Proven by the `raw-mutation` hostile
+red-team case.)
 
-### Sandboxed iframe
+## How capabilities work (the handler registry)
 
-The host creates a hidden iframe with:
+The applet has no ambient powers; it acts only through `session.*`. The design is a
+**single registry of capability handlers** in the wrapper, with two thin views:
 
-```html
-<iframe
-  sandbox="allow-scripts"
-  referrerpolicy="no-referrer"
-  allow=""
-  src="https://sandbox-distinct-domain.example/sandbox.html?..."
-></iframe>
+```
+  applet  ──►  session.smart.search(…)         ─┐
+                                                 ├─►  one host handler  ──► validate,
+  applet  ──►  fetch('https://fhir.internal/…') ─┘     scope, token, audit, dispatch
 ```
 
-Omitting `allow-same-origin` gives the iframe an opaque origin. Omitting forms, popups, top navigation, downloads, and storage-access flags keeps those abilities disabled. In production, host and sandbox should be on different registrable domains to encourage browser site/process isolation.
+- The **broker** (`clinical-broker.ts`) registers one handler per concern
+  (`smart`, `ai`, `styles`, `files`, `audit`) and composes them into the namespaced
+  `session` object via `buildSession()`.
+- The **handshake returns that object directly** — `@quilted/threads` proxies the
+  nested functions and clones the nested data, so the wire shape *is* the API shape.
+  No flat capability bag, no translation layer.
+- The **typed SDK** (`session.smart`, `session.ai`, …) and the **`*.internal` fetch
+  facade** (for dropping in `fhirclient`/`openai`) both funnel into the same handler.
+  One enforcement point — the FHIR allowlist, scopes, budgets, and audit live once,
+  not duplicated per access style.
 
-The frame receives one `MessagePort` after a source- and nonce-bound handshake. It creates an inline Blob worker and transfers the port into it. It does not receive clinical data itself.
+To add a capability: register a handler. The typed method and (optionally) a
+`*.internal` endpoint follow. See **HOST_API.md**.
 
-### Applet worker
+## Two CSPs, and why CSS can't exfil
 
-The worker contains:
+There are two Content-Security-Policies, and within the host one, two directive
+*families* that must not be conflated:
 
-- React 18;
-- Remote DOM's minimal DOM polyfill;
-- the clinician applet bundle;
-- wrappers for the clinical capabilities;
-- no real `window` or `document`;
-- no token, cookie, or LLM API key.
+- **Wrapper (host page) CSP.** `connect-src` is open (`'self' https: http:`) so the
+  trusted wrapper can `fetch()` an applet bundle from anywhere and reach the FHIR/LLM
+  servers. But the **CSS-reachable** directives are locked: `img-src data: blob:`,
+  `font-src 'self' data:`, `style-src 'self' 'unsafe-inline'`, fallback
+  `default-src 'self'`. **CSS cannot use `connect-src`** — it only loads resources via
+  the image/font/style directives — so an applet stylesheet has no path to an external
+  origin, even though scripted fetch is open. Any future CSS-fetch feature falls back
+  to `default-src` (mandatory fallback chain), so coverage is complete by
+  construction, not by pattern-matching.
+- **Sandbox/worker CSP.** `connect-src 'none'` — the applet has no network at all.
+  Applet code is fetched as *data* by the wrapper and run in a blob worker; it is
+  never injected as a `<script src>`, so the host `script-src` stays `'self'`.
 
-The worker script is a Blob created by the CSP-constrained iframe. Blob workers inherit the creator's CSP, so `connect-src 'none'` applies to worker `fetch`, WebSocket, EventSource, and related network APIs. The spike confirms this behavior with a direct request to a local `/probe` endpoint that should fail.
+The CSS validator is therefore **defense-in-depth + DX + closing the same-origin
+residual**, not the primary control. See **THREAT_MODEL.md** §CSS.
 
-## Startup sequence
+## Browser-only authoring
 
-```mermaid
-sequenceDiagram
-  participant H as Trusted host
-  participant I as Sandboxed iframe
-  participant W as Applet worker
-  participant B as Clinical broker
+The `/author` playground compiles a multi-file TSX/CSS project **in the browser**
+(esbuild-wasm + esm.sh for npm), concatenates the prebuilt SDK, hash-addresses the
+artifact, and runs it through the identical sandbox. `wasm-unsafe-eval` is granted
+only on `/author` (the trusted tool); the compiled applet still runs under the locked
+sandbox CSP. Authored artifacts inherit full containment via the same launcher path.
 
-  H->>H: Generate 128-bit nonce and MessageChannel
-  H->>I: Load sandbox URL containing nonce
-  H->>I: postMessage(connect, nonce, port2)
-  I->>I: Verify parent source and nonce
-  I->>W: Create inline worker; transfer port2
-  W->>H: RPC connect(protocol, applet ID, version)
-  H->>H: Verify protocol and exact applet identity
-  H-->>W: Remote DOM connection, clinical API, context
-  W->>W: Probe DOM, network, and storage
-  W->>B: audit(security probe)
-  W->>B: fhirRequest(Patient/...)
-  B->>B: Validate relative destination and budget
-  B-->>W: Synthetic FHIR result in the spike
-  W->>H: Remote DOM mutations
-  H->>H: Render trusted React components and Vega
-```
+## Source map
 
-## Message protocol
+| Area | Files |
+| --- | --- |
+| Capability surface (wire = API) | `src/shared/protocol.ts` |
+| Handler registry / broker | `src/host/broker/clinical-broker.ts`, `fhir-capability.ts` |
+| Applet runtime (composes `session`, fetch facades) | `src/applet/runtime.tsx` |
+| Safe DOM schema + firewall | `src/shared/safe-dom-schema.ts`, `src/host/safe-dom-firewall.ts`, `mutation-gateway.ts` |
+| Validators | `src/host/css-validator.ts`, `safe-svg-validator.ts`, `components/vega-sanitizer.ts` |
+| Vetted components / events | `src/host/components/remote-components.tsx`, `src/shared/safe-events.ts` |
+| Attachments / styles install | `src/host/attachment-registry.ts`, `src/host/ShadowSurface.tsx` |
+| In-browser authoring | `src/host/authoring/esbuild-compile.ts`, `src/applet/authoring-sdk.ts` |
 
-`@quilted/threads` is used because it can proxy nested callable objects and event functions over a `MessagePort`, which fits Remote DOM. The public interface is defined in `src/shared/protocol.ts`.
+## Companion docs
 
-The applet receives:
-
-```ts
-interface ClinicalCapabilityApi {
-  fhirRequest(request: {
-    url: string;
-    init?: {
-      method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-      headers?: Record<string, string>;
-      body?: unknown;
-    };
-  }): Promise<unknown>;
-
-  llmComplete(request: {
-    profile: string;
-    messages: Array<{
-      role: 'system' | 'user' | 'assistant';
-      content: string;
-    }>;
-    responseSchema?: Record<string, unknown>;
-  }): Promise<{
-    text: string;
-    model: string;
-    profile: string;
-    usage: {inputTokens: number; outputTokens: number};
-  }>;
-
-  audit(event: {
-    kind: 'lifecycle' | 'security-probe' | 'application';
-    message: string;
-    detail?: Record<string, unknown>;
-  }): Promise<void>;
-}
-```
-
-Zod validates every capability call in the trusted shell. A production implementation should additionally impose message byte limits before deserialization, per-session call budgets, bounded concurrency, and abort/cancellation identifiers.
-
-## Broad FHIR authority
-
-`FhirRequestCapability` deliberately avoids a FHIR resource allowlist. It accepts any relative request inside the active SMART server base path. This permits applications to use arbitrary searches, operations, paging, and resource types allowed by the EHR.
-
-The broker still provides meaningful containment:
-
-1. The applet cannot obtain the bearer token.
-2. Absolute and scheme-relative URLs are rejected.
-3. Base-path traversal is rejected.
-4. Caller-provided authorization, cookie, host, origin, referrer, and proxy-authorization headers are stripped.
-5. The response is bounded by size and time.
-6. Audit records contain operation metadata, not returned PHI.
-7. Read/write mode is a product policy independent of the applet bundle.
-
-In production, `src/host/broker/smart-fhirclient-adapter.ts` replaces the synthetic transport. `fhirclient` performs authenticated requests and automatic access-token refresh in the trusted shell.
-
-## UI transport
-
-The applet uses React normally, but its JSX elements are Remote DOM custom elements. React reconciles a virtual tree against Remote DOM's worker polyfill. Remote DOM then sends mutation records to the host, where `RemoteReceiver` maps each permitted element to a trusted React component.
-
-This gives the host final control over:
-
-- element types;
-- property normalization and size limits;
-- event payloads;
-- styles and URLs;
-- accessibility behavior;
-- graphics loaders and export actions;
-- portal surfaces such as dialogs and menus.
-
-It also means DOM-dependent React packages are not automatically compatible. The SDK should provide high-value adapters and escape hatches such as safe canvas surfaces rather than exposing unrestricted HTML.
-
-## Vega-Lite path
-
-The applet sends an inline Vega or Vega-Lite specification as a property of `ui-vega`. The trusted host:
-
-- clones and recursively checks the specification;
-- rejects `url`, `href`, `src`, image, loader, and base-URL keys;
-- rejects executable or external URL schemes embedded in strings;
-- enforces a 1.5 MB specification budget and array limits;
-- invokes `vegaEmbed` with `actions: false` and a canvas renderer;
-- disposes the prior Vega view before re-rendering.
-
-This preserves Vega's rich declarative grammar and interactive signals without allowing the specification to fetch external data or open the editor/export UI.
-
-## Two-origin development server
-
-`tools/serve.mjs` is intentionally tiny and uses only Node's standard library. It serves already-built assets and applies different headers to host and sandbox origins.
-
-This server is not part of clinical computation. A production deployment would put the two static bundles behind hardened hospital-controlled origins and headers, usually with an outbound proxy or browser policy that can independently confirm the sandbox has no Internet route.
-
-## Production variant
-
-```text
-EHR launch page
-  └─ Trusted shell at apps.hospital.example
-       ├─ SMART public client
-       ├─ same-origin clinical gateway only if required by EHR CORS
-       ├─ BAA-covered model gateway
-       └─ sandbox iframe at hospital-applet-sandbox.net
-            └─ worker with applet bundle
-```
-
-A same-origin gateway may be operationally necessary where an EHR or model provider cannot be called directly from the browser. That gateway performs network transport but must never execute applet code. The architectural requirement is **browser-only applet computation**, not necessarily direct browser connectivity to every protected API.
+- **APPLET_API.md** — the `session.*` surface for applet authors.
+- **HOST_API.md** — the handler registry; how to add a capability.
+- **THREAT_MODEL.md** — boundaries, the CSS/CSP guarantee, the attachment model.
+- **SECURITY_CLAIMS_AND_ASSUMPTIONS.md** — claims to attack; reproduction harness.
+- **PRODUCTION_DEPLOYMENT.md** — two-domain deployment, signing, incident/revocation.

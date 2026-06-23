@@ -16,8 +16,10 @@ each app has to keep.
 
 Most "SMART on FHIR app" designs hand each app the clinician's OAuth token and
 full browser network authority, then trust it. This inverts that: the wrapper
-holds the token and exposes only **brokered capabilities** to applets —
-`fhirRequest()`, `llmComplete()`, `audit()` — never the token, never raw `fetch`.
+holds the token and hands the applet a single **`session`** of brokered
+capabilities — `session.smart` (FHIR), `session.ai` (the model), `session.styles`,
+`session.files`, `session.audit` — never the token, never raw `fetch`. See
+[docs/APPLET_API.md](docs/APPLET_API.md).
 
 Each applet is **untrusted code by construction**, contained in an opaque-origin
 iframe → DedicatedWorker:
@@ -31,7 +33,7 @@ iframe → DedicatedWorker:
 ```
 Trusted wrapper (real origin, has token)
   ├─ SMART client + OAuth token            never leaves this tier
-  ├─ broker: fhirRequest / llmComplete / audit
+  ├─ handler registry → session.smart / ai / styles / files / audit
   ├─ host-rendered components (React, Vega-Lite, tables…)
   └─ opaque <iframe sandbox="allow-scripts">      ← policy boundary
         └─ DedicatedWorker (classic blob worker)   ← the applet
@@ -39,6 +41,22 @@ Trusted wrapper (real origin, has token)
              ├─ no DOM / no fetch / no storage
              └─ talks to the wrapper only over a MessagePort
 ```
+
+## Documentation
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — the model: containment stack,
+  Remote DOM, the handler registry, the two-CSP design.
+- [docs/APPLET_API.md](docs/APPLET_API.md) — the `session.*` surface for applet
+  authors (+ components and events).
+- [docs/HOST_API.md](docs/HOST_API.md) — the wrapper's capability registry and how
+  to add a capability.
+- [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) — boundaries, the CSS/CSP guarantee,
+  the attachment model.
+- [docs/SECURITY_CLAIMS_AND_ASSUMPTIONS.md](docs/SECURITY_CLAIMS_AND_ASSUMPTIONS.md)
+  — claims to attack + the reproduction harness.
+- [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md) — two-domain
+  deployment, signing, incident/revocation. ([archive/](docs/archive/) holds
+  superseded planning notes.)
 
 ## What's in here
 

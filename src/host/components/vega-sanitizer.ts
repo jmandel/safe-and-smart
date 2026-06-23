@@ -61,6 +61,12 @@ function assertSafeValue(value: unknown, path: string): void {
     if (forbiddenKeys.has(key)) {
       throw new Error(`Vega key ${key} is not available in the sandbox at ${path}.`);
     }
+    // `$schema` is well-known Vega/Vega-Lite metadata: vega-embed reads it only to
+    // choose the mode (vega vs vega-lite) and never fetches it. Allow the string.
+    if (key === '$schema') {
+      if (typeof child !== 'string') throw new Error(`Invalid $schema at ${path}.`);
+      continue;
+    }
     if (key === 'expr' || key === 'signal') {
       // Vega expressions are useful for interactive charts, but should be reviewed
       // separately before production. The spike allows ordinary string expressions

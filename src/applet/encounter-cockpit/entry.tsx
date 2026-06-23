@@ -10,7 +10,6 @@ import {
   Inline,
   Heading,
   Text,
-  Badge,
   Button,
   Card,
   Vega,
@@ -20,11 +19,18 @@ import {
 } from '../remote-elements';
 
 const STYLES = `
+.cockpit-head { display: block; padding: 18px 20px; border-radius: 16px; background: #fff;
+  border: 1px solid #e2e8f0; border-left: 5px solid #14b8a6; }
+.cockpit-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
+  color: #0f5132; background: #dcfce7; border-radius: 999px; padding: 4px 11px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { display: inline-block; font-size: 11px; font-weight: 600; color: #0f766e; background: #ccfbf1;
+  border-radius: 999px; padding: 3px 9px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .panel { display: block; padding: 16px; border-radius: 14px; background: #fff; border: 1px solid #e2e8f0; }
-.panel.dark { background: linear-gradient(135deg, #0f172a, #1e293b); color: #e2e8f0; border: 0; }
-.summary { display: block; white-space: pre-wrap; line-height: 1.5; min-height: 48px; }
-.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #22c55e; }
+.summary { display: block; white-space: pre-wrap; line-height: 1.55; min-height: 48px; color: #334155; }
 `;
 
 const PATHWAY = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 70" width="100%">
@@ -125,16 +131,21 @@ function EncounterCockpit({context, clinical}: AppletProps) {
 
   return (
     <Stack gap={14}>
-      <Box className="panel dark">
-        <Stack gap={6}>
-          <Heading level={2}>Encounter cockpit — {context.patient.display}</Heading>
-          <Inline>
-            <Badge tone="positive">
-              <Inline className="dot" /> live
-            </Badge>{' '}
-            <Text tone="muted">CSS · FHIR · chart · streaming LLM+tool · SVG · attachment</Text>
+      <Box className="cockpit-head">
+        <Heading level={2}>Encounter cockpit</Heading>
+        <Text tone="muted">{context.patient.display}</Text>
+        <Box className="cockpit-meta">
+          <Inline className="live">
+            <Inline className="dot" /> Live
           </Inline>
-        </Stack>
+          <Box className="tags">
+            {['CSS', 'FHIR', 'Chart', 'Streaming LLM + tool', 'SVG', 'Attachment'].map((t) => (
+              <Inline key={t} className="tag">
+                {t}
+              </Inline>
+            ))}
+          </Box>
+        </Box>
       </Box>
 
       <Box className="grid">

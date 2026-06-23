@@ -171,17 +171,21 @@ export function App({
     <div className="shell">
       <header className="shell-header">
         <div className="shell-brand">
-          <div className="shell-mark">C</div>
-          <div>
-            <h1>Clinical Applet Runtime</h1>
-            <p>Trusted SMART + LLM shell / browser-only untrusted applet</p>
+          <div className="shell-mark" aria-hidden>✚</div>
+          <div className="shell-titles">
+            <h1>Clinical Applet Sandbox</h1>
+            <p className="shell-sub">{broker.context.user.display}</p>
           </div>
         </div>
         <div className="shell-context">
+          <span className="shell-pill shell-pill--patient" title="Patient in context">
+            {broker.context.patient.display}
+          </span>
           <AppletPicker />
-          <span className="shell-pill">{broker.context.user.display}</span>
-          <span className="shell-pill">Patient: {broker.context.patient.display}</span>
-          <span className="shell-pill">{status === 'connected' ? 'Connected' : status}</span>
+          <span className={`shell-status is-${status}`} title={`Sandbox ${status}`}>
+            <span className="shell-dot" aria-hidden />
+            {status === 'connected' ? 'Live' : status}
+          </span>
         </div>
       </header>
 

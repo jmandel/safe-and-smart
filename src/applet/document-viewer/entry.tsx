@@ -14,7 +14,7 @@ const data = btoa(
   "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='170' viewBox='0 0 320 170'>" +
     "<rect width='320' height='170' rx='10' fill='#0f172a'/>" +
     "<text x='22' y='44' fill='#e2e8f0' font-family='sans-serif' font-size='15'>Discharge summary</text>" +
-    "<text x='22' y='78' fill='#94a3b8' font-family='sans-serif' font-size='11'>Inline attachment bytes — shown directly.</text>" +
+    "<text x='22' y='78' fill='#94a3b8' font-family='sans-serif' font-size='11'>Inline attachment bytes - shown directly.</text>" +
     "<text x='22' y='100' fill='#64748b' font-family='sans-serif' font-size='10'>No URL, no token, no network request.</text>" +
     '</svg>',
 );

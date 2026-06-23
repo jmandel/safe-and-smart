@@ -25,11 +25,48 @@ import {
   type HostThreadExports,
   type Session,
 } from '../shared/protocol';
-import {RootElement} from './remote-elements';
+import {RootElement, Alert, Stack, Text} from './remote-elements';
 import {runSecurityProbe} from './security-probe';
 
 export interface AppletProps {
   session: Session;
+}
+
+// Catches errors thrown while the applet renders in the worker. Without this a
+// throw produces NO mutations and the host surface just stays blank — a silent
+// failure. Instead we render a visible error component INTO the remote tree (so
+// the wrapper shows it) and report `applet.error` to the trusted audit log.
+class AppletRootBoundary extends React.Component<
+  {session: Session; children: React.ReactNode},
+  {message: string | null}
+> {
+  state: {message: string | null} = {message: null};
+
+  static getDerivedStateFromError(error: unknown): {message: string} {
+    return {message: error instanceof Error ? error.message : String(error)};
+  }
+
+  componentDidCatch(error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    void this.props.session
+      .audit({kind: 'application', code: 'applet.error', message: `render error: ${message}`.slice(0, 1990)})
+      .catch(() => undefined);
+    if (typeof console !== 'undefined') console.error('[applet] render error:', error);
+  }
+
+  render(): React.ReactNode {
+    if (this.state.message != null) {
+      return (
+        <Alert tone="danger" title="This applet hit an error">
+          <Stack gap={4}>
+            <Text>The applet failed while rendering and was contained by the sandbox.</Text>
+            <Text tone="muted">{this.state.message.slice(0, 500)}</Text>
+          </Stack>
+        </Alert>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export interface AppletManifest {
@@ -105,7 +142,11 @@ async function start(
   document.body.append(rootElement);
 
   reactRoot = createRoot(rootElement);
-  reactRoot.render(<App session={session} />);
+  reactRoot.render(
+    <AppletRootBoundary session={session}>
+      <App session={session} />
+    </AppletRootBoundary>,
+  );
 }
 
 // Sentinel bases the applet's HTTP-style calls target. Neither is a real host;

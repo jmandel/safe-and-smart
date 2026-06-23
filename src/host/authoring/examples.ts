@@ -255,7 +255,7 @@ runApplet(App, { appletId: 'play.svg', appletVersion: '0.1.0' });
     "<svg xmlns='http://www.w3.org/2000/svg' width='300' height='150'>" +
     "<rect width='300' height='150' rx='10' fill='#0f172a'/>" +
     "<text x='20' y='60' fill='#e2e8f0' font-family='sans-serif' font-size='15'>Discharge summary</text>" +
-    "<text x='20' y='92' fill='#94a3b8' font-family='sans-serif' font-size='11'>Inline attachment bytes — no fetch.</text></svg>"
+    "<text x='20' y='92' fill='#94a3b8' font-family='sans-serif' font-size='11'>Inline attachment bytes - no fetch.</text></svg>"
   );
   const dataUrl = 'data:' + contentType + ';base64,' + data;
   return (

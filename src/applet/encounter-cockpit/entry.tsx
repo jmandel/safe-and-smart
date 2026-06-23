@@ -49,7 +49,7 @@ const NOTE_DATA_URL = `data:image/svg+xml;base64,${btoa(
   "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='150' viewBox='0 0 320 150'>" +
     "<rect width='320' height='150' rx='10' fill='#0f172a'/>" +
     "<text x='20' y='40' fill='#e2e8f0' font-family='sans-serif' font-size='14'>Encounter note</text>" +
-    "<text x='20' y='72' fill='#94a3b8' font-family='sans-serif' font-size='11'>Inline attachment bytes — shown directly.</text>" +
+    "<text x='20' y='72' fill='#94a3b8' font-family='sans-serif' font-size='11'>Inline attachment bytes - shown directly.</text>" +
     "<text x='20' y='94' fill='#64748b' font-family='sans-serif' font-size='10'>No URL, no token, no network request.</text>" +
     '</svg>',
 )}`;

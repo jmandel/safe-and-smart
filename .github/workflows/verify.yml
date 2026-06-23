@@ -49,5 +49,8 @@ jobs:
       - name: Red-team — hostile applets must produce zero canary hits
         run: bun tests/security/redteam.mjs
 
+      - name: Content smoke — every demo + playground item renders; errors bubble up
+        run: bun tests/content/smoke.mjs
+
       - name: Release manifest (artifact + TCB hashes)
         run: bun run tools/release-manifest.ts

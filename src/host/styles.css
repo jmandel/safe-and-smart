@@ -254,7 +254,12 @@ select.shell-pill option { color: #10223d; background: white; }
 .play-lesson-hint { display: block; margin-top: 8px; font-size: 11.5px; color: #8595ab; }
 .play-editor-wrap { flex: 1; min-height: 160px; overflow: auto; border-radius: 10px; background: #2d2d2d; }
 .code-editor { min-height: 100%; }
-.code-editor-ta { outline: none; }
+/* prism-tomorrow colors only .token.* spans and scopes its base text color to
+   [class*="language-"], which react-simple-code-editor's <pre>/<code> don't carry.
+   Set the base color ourselves so untokenized text (JSX text content, plain
+   identifiers like `session`/`probe`) isn't near-invisible on the dark editor bg. */
+.code-editor-pre, .code-editor-pre code { color: #e8e8e8; }
+.code-editor-ta { outline: none; caret-color: #e8e8e8; }
 .code-editor-pre { margin: 0; }
 .play-editor { display: flex; flex-direction: column; min-height: 0; gap: 6px; }
 .play-tabs { display: flex; gap: 4px; flex-wrap: wrap; }

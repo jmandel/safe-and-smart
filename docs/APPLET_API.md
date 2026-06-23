@@ -20,7 +20,7 @@ function App({session}) {
 runApplet(App, {appletId: 'org.example.hello', appletVersion: '0.1.0'});
 ```
 
-`session` is **one object with five namespaces** (each one a brokered host handler),
+`session` is **one object with four namespaces** (each one a brokered host handler),
 plus a worker-side isolation report:
 
 | `session.*` | concern | also reachable as |
@@ -28,9 +28,15 @@ plus a worker-side isolation report:
 | `session.smart` | SMART-on-FHIR launch context **and** scoped FHIR access | `fetch('https://fhir.internal/…')` |
 | `session.ai` | the language model | `fetch('https://llm.internal/v1/…')` (OpenAI shape) |
 | `session.styles` | install validated CSS for your surface | — |
-| `session.files` | open token-protected attachments | — |
 | `session.audit` | write to the trusted audit log | — |
 | `session.probe` | the worker's own sandbox self-test (read-only) | — |
+
+Every capability reaches only a **fixed, trusted destination** (the FHIR server, the
+model gateway). There is deliberately **no capability that lets the applet choose a
+URL or origin** for the host to fetch — that would re-open the network egress the
+sandbox exists to remove (an exfiltration channel). You read data from the trusted
+origins and render bytes you already hold; you never hand the host an address to go
+get.
 
 ---
 
@@ -109,10 +115,10 @@ useEffect(() => { session.styles.add(css); }, []);
 `add()` resolves `{ok:false, error}` if the CSS is rejected (and the rejection is
 audited) — never silently dropped.
 
-## Showing documents — `<Image>` and `session.files`
+## Showing documents — `<Image>`
 
 Documents aren't a separate way to fetch. A FHIR document is a `Binary`/`Attachment`
-you read like anything else with `session.smart`. Often the bytes are inline
+you read like anything else with `session.smart`. The bytes are usually inline
 (`Attachment.data`, base64) — once you have them, you display them yourself:
 
 ```tsx
@@ -122,20 +128,16 @@ const dataUrl = `data:${attachment.contentType};base64,${attachment.data}`;
 ```
 
 `<Image src>` accepts **`data:` URLs only** — self-contained, so they make no
-network request. A remote (`http(s)`) src is rejected (that would be an
+network request. A remote (`http(s)`) or relative src is rejected (that would be an
 applet-controlled image source — the exfil vector the sandbox forbids).
 
-You only need **`session.files.open`** for the case you genuinely can't reach: an
-`Attachment.url` that's absolute / on another server and needs the clinician's token.
-The wrapper fetches it for you (with the token, host-side) and returns an opaque
-`handle` you render with `<Image handle>` — you never hold the URL or token.
-
-```tsx
-const r = await session.files.open({url: 'https://docs.example/scan.pdf'});
-if (r.ok) setHandle(r.handle);
-// …
-{handle ? <Image handle={handle} alt="External scan" /> : null}
-```
+There is **no `open this URL for me`** capability. Letting the applet name a URL for
+the host to fetch (with the clinician's token) would be a confused-deputy /
+exfiltration channel — the applet could point the host at an attacker origin, or
+smuggle data out in the path. So the model is strictly: read bytes from the trusted
+FHIR origin via `session.smart`, then render them. If an `Attachment.url` points at a
+server the FHIR scope can't reach, it's out of scope — not something the wrapper
+fetches on the applet's behalf.
 
 ## `session.audit` — accountability
 

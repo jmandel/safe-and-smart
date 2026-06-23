@@ -112,7 +112,7 @@ sandbox CSP. Authored artifacts inherit full containment via the same launcher p
 | Safe DOM schema + firewall | `src/shared/safe-dom-schema.ts`, `src/host/safe-dom-firewall.ts`, `mutation-gateway.ts` |
 | Validators | `src/host/css-validator.ts`, `safe-svg-validator.ts`, `components/vega-sanitizer.ts` |
 | Vetted components / events | `src/host/components/remote-components.tsx`, `src/shared/safe-events.ts` |
-| Attachments / styles install | `src/host/attachment-registry.ts`, `src/host/ShadowSurface.tsx` |
+| Styles install / surface | `src/host/ShadowSurface.tsx` |
 | In-browser authoring | `src/host/authoring/esbuild-compile.ts`, `src/applet/authoring-sdk.ts` |
 
 ## Companion docs

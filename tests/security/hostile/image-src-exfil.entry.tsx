@@ -1,8 +1,8 @@
-// Hostile applet: try to turn the protected-attachment image into an exfil sink by
-// driving a raw mutation that sets a `src` (and an external attribute) on ui-image
-// pointing at the canary. The schema only allows an opaque `handle` (resolved
-// host-side), so the firewall rejects a raw `src` prop and any attribute — no
-// network request is ever made.
+// Hostile applet: try to turn an image into an exfil sink by driving a raw mutation
+// that sets a remote `src` (and an external attribute, and a now-removed `handle`
+// prop) on ui-image pointing at the canary. `ui-image` accepts only a `data:` `src`;
+// the firewall rejects a remote src, any attribute, and the unknown `handle` prop —
+// no network request is ever made.
 import {ThreadMessagePort} from '@quilted/threads';
 import {PROTOCOL_VERSION} from '../../../src/shared/protocol';
 
@@ -32,7 +32,7 @@ self.addEventListener('message', (event: MessageEvent<{type?: string}>) => {
       try {
         conn.mutate([record]);
       } catch {
-        /* expected: firewall rejects src/attributes; handle=URL renders an error, no fetch */
+        /* expected: firewall rejects remote src, attributes, and the unknown handle prop — no fetch */
       }
     }
   })();

@@ -308,7 +308,7 @@ const BUILTINS: AppletEntry[] = [
     label: 'Encounter Cockpit — everything',
     value: applet('encounter-cockpit.js'),
     group: 'Clinical apps',
-    blurb: 'The whole surface in one screen: CSS, FHIR, chart + table, streaming LLM with a brokered tool, custom SVG, and a protected attachment.',
+    blurb: 'The whole surface in one screen: CSS, FHIR, chart + table, streaming LLM with a brokered tool, custom SVG, and an inline document.',
     tests: ['CSS', 'FHIR', 'Chart', 'LLM stream + tool', 'SVG', 'Attachment'],
   },
   {
@@ -347,11 +347,11 @@ const BUILTINS: AppletEntry[] = [
     tests: ['FHIR bridge'],
   },
   {
-    label: 'Document Viewer — attachment',
+    label: 'Document Viewer — inline attachment',
     value: applet('document-viewer.js'),
     group: 'Capability demos',
-    blurb: 'Renders a token-protected document from an opaque handle; the applet never receives the URL or token.',
-    tests: ['Protected attachment', 'ui-image'],
+    blurb: 'Renders a document from inline attachment bytes as a self-contained data: URL — no fetch, no URL, no token.',
+    tests: ['Inline document', 'ui-image (data: only)'],
   },
   {
     label: 'Intrinsic JSX demo',

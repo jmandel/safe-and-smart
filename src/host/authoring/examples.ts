@@ -240,22 +240,29 @@ runApplet(App, { appletId: 'play.svg', appletVersion: '0.1.0' });
   },
   {
     id: 'document',
-    name: 'Protected doc',
-    blurb: 'session.files.open → opaque handle → <Image>.',
+    name: 'Inline document',
+    blurb: 'Attachment bytes → a self-contained data: URL → <Image>.',
     files: [
       f(
         'App.tsx',
         `function App({ session }) {
-  const [handle, setHandle] = useState();
-  useEffect(() => {
-    session.files.open({ url: 'demo:discharge-summary', title: 'Discharge summary' })
-      .then((r) => r.ok && setHandle(r.handle));
-  }, []);
+  // A FHIR Attachment usually carries its bytes inline as base64 \`data\` plus a
+  // \`contentType\`. You already hold the bytes, so build a self-contained data: URL
+  // and show it — no fetch, nothing the wrapper has to reach out for, nothing to
+  // leak. (<Image src> accepts data: URLs only; a remote src is rejected.)
+  const contentType = 'image/svg+xml';
+  const data = btoa(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='300' height='150'>" +
+    "<rect width='300' height='150' rx='10' fill='#0f172a'/>" +
+    "<text x='20' y='60' fill='#e2e8f0' font-family='sans-serif' font-size='15'>Discharge summary</text>" +
+    "<text x='20' y='92' fill='#94a3b8' font-family='sans-serif' font-size='11'>Inline attachment bytes — no fetch.</text></svg>"
+  );
+  const dataUrl = 'data:' + contentType + ';base64,' + data;
   return (
     <ui.Stack gap={12}>
-      <ui.Heading level={2}>Protected document</ui.Heading>
-      <ui.Text tone="muted">Rendered from an opaque handle — no URL or token in the applet.</ui.Text>
-      {handle ? <ui.Image handle={handle} alt="Discharge summary" /> : <ui.Text tone="muted">Loading…</ui.Text>}
+      <ui.Heading level={2}>Inline document</ui.Heading>
+      <ui.Text tone="muted">Attachment bytes shown directly — no URL, no token, no network.</ui.Text>
+      <ui.Image src={dataUrl} alt="Discharge summary" />
     </ui.Stack>
   );
 }

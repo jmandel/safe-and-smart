@@ -1,7 +1,7 @@
 // Capstone applet: exercises the full capability surface in one clinical UI under
 // the unchanged sandbox — CSS Modules (registerStylesheet), the FHIR fetch bridge,
 // a Vega chart + accessible table, streaming LLM with a brokered tool, a validated
-// SVG diagram, and a protected attachment via an opaque handle.
+// SVG diagram, and an inline document rendered from a self-contained data: URL.
 import {useEffect, useState} from 'react';
 import {runApplet, type AppletProps} from '../runtime';
 import {
@@ -41,6 +41,19 @@ const PATHWAY = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 70" wi
   <g><circle cx="320" cy="35" r="16" fill="#22c55e"/><text x="320" y="39" text-anchor="middle" fill="#fff" font-size="9">Plan</text></g>
 </svg>`;
 
+// An inline document. In a real applet these bytes come from a FHIR Attachment's
+// base64 `data` read via session.smart; here they're synthesized. Either way the
+// applet holds the bytes and renders a self-contained data: URL — no fetch, so
+// nothing to exfiltrate. (<Image src> accepts data: URLs only.)
+const NOTE_DATA_URL = `data:image/svg+xml;base64,${btoa(
+  "<svg xmlns='http://www.w3.org/2000/svg' width='320' height='150' viewBox='0 0 320 150'>" +
+    "<rect width='320' height='150' rx='10' fill='#0f172a'/>" +
+    "<text x='20' y='40' fill='#e2e8f0' font-family='sans-serif' font-size='14'>Encounter note</text>" +
+    "<text x='20' y='72' fill='#94a3b8' font-family='sans-serif' font-size='11'>Inline attachment bytes — shown directly.</text>" +
+    "<text x='20' y='94' fill='#64748b' font-family='sans-serif' font-size='10'>No URL, no token, no network request.</text>" +
+    '</svg>',
+)}`;
+
 interface Reading {
   when: string;
   value: number;
@@ -64,7 +77,6 @@ function EncounterCockpit({session}: AppletProps) {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [summary, setSummary] = useState('');
   const [streaming, setStreaming] = useState(false);
-  const [docHandle, setDocHandle] = useState<string>();
 
   useEffect(() => {
     void session.styles.add(STYLES);
@@ -84,9 +96,6 @@ function EncounterCockpit({session}: AppletProps) {
         /* leave empty */
       }
     })();
-    session.files.open({url: 'demo:encounter-note', title: 'Encounter note'}).then((r) => {
-      if (r.ok) setDocHandle(r.handle);
-    });
   }, [session.smart.patient.id]);
 
   const summarize = async () => {
@@ -182,7 +191,7 @@ function EncounterCockpit({session}: AppletProps) {
         <Box className="panel">
           <Stack gap={8}>
             <Heading level={3}>Encounter note</Heading>
-            {docHandle ? <Image handle={docHandle} alt="Encounter note (protected)" /> : <Text tone="muted">Loading…</Text>}
+            <Image src={NOTE_DATA_URL} alt="Encounter note" />
           </Stack>
         </Box>
       </Box>

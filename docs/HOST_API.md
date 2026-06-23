@@ -15,9 +15,14 @@ transport and exposes one private handler per concern:
                                  // attach token, enforce byte budget, audit, dispatch
 #llmComplete(req) / #llmStream(req, onToken)  // model + broker-side tool allowlist
 #registerStylesheet(css)         // CSS validate → ShadowRoot-scoped install
-#fetchAttachment(ref)            // token-fetch host-side → opaque handle
 #audit(event)                    // schema-validate + sanitize → trusted log
 ```
+
+Every handler reaches only a fixed trusted origin (the FHIR server, the model
+gateway). There is deliberately no "fetch an applet-supplied URL" handler — that
+would let the applet pick the request origin and re-open the egress channel the
+sandbox removes. Documents are read as bytes via `#fhirRequest` and rendered with
+`<Image src="data:…">` (the firewall rejects any non-`data:` image src).
 
 `buildSession()` composes those handlers into the namespaced object the handshake
 returns:
@@ -33,7 +38,6 @@ buildSession(): HostCapabilities {
     },
     ai:     {complete: this.#llmComplete, stream: this.#llmStream},
     styles: {add: this.#registerStylesheet},
-    files:  {open: this.#fetchAttachment},
     audit:  this.#audit,
   };
 }
@@ -81,7 +85,6 @@ to keep in sync — the property the registry buys you.
 | `#fhirRequest` | relative-URL only, no traversal/encoded separators, request-header allowlist, redirect rejection, response byte budget, read-only by default, bounded paging, per-call audit |
 | `#llmComplete` / `#llmStream` | approved profile, message bounds, broker-side tool allowlist (the model never gets raw capabilities) |
 | `#registerStylesheet` | CSS validator (no url/scheme/@import/escape-hatch), ShadowRoot-scoped install |
-| `#fetchAttachment` | token-fetch host-side, opaque handle (URL/token never cross), blob lifecycle |
 | `#audit` | closed code vocabulary, control-char-stripped + length-capped message, append-only |
 
 Plus the always-on host-side firewall around the render path (mutation gateway +

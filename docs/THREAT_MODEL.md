@@ -224,23 +224,30 @@ re-inject already-validated tokens). It closes the only residual the CSP leaves 
 *same-origin* CSS fetches into the wrapper's own logs — and gives a clear error
 instead of a silent CSP block. It is a second fail-closed layer, not the boundary.
 
-### 11. Protected attachment disclosure
+### 11. Showing documents without an arbitrary-origin fetch
 
-**Attack:** turn a displayed document into an exfil sink, or extract the token-bearing
-URL.
+**Attack:** turn a displayed document into an exfil sink — make the host fetch an
+attacker-chosen URL (with the clinician's token), or smuggle data out in a URL the
+applet supplies.
 
-**Controls.** The applet cannot make an `<img src>` to an external URL at all: there
-is no raw `<img>` (curated element set + firewall), `ui-image` accepts only an opaque
-`handle` (no `src`/attributes), and the host CSP `img-src data: blob:` blocks external
-image loads regardless. The **handle** (`session.files.open`) is therefore *not* the
-img-exfil control — it provides credential isolation (the broker fetches with the
-token host-side; the applet never holds URL or token), keeps multi-MB binaries off the
-worker boundary, gives defense-in-depth (no URL in the applet's hands to point
-anywhere), and a revocable blob lifecycle.
+**Controls — no applet-chosen origin exists.** There is deliberately *no* capability
+that fetches an applet-supplied URL. An earlier design let the applet pass an
+`Attachment.url` for the broker to fetch host-side and return as an opaque handle;
+that was **removed**, because the applet choosing the request origin is itself the
+exfiltration channel (point the host at an attacker origin, or encode data in the
+path) — a confused-deputy that re-grants the network egress the sandbox exists to
+remove. Documents are instead shown from bytes the applet already holds: a FHIR
+`Attachment`/`Binary` is read via `session.smart` (the broker only ever reaches the
+fixed trusted FHIR origin), and the inline base64 `data` is rendered as a
+self-contained `data:` URL. `ui-image` accepts a `src` that the firewall validates to
+be **`data:` only** — any remote or relative src is rejected — and the host CSP
+`img-src data: blob:` blocks external image loads regardless. So an image makes no
+network request and there is no host-side fetch the applet can steer.
 
 > Note on the API: capabilities are exposed to applets as one `session` object
-> (`session.smart` / `ai` / `styles` / `files` / `audit`), each backed by a single
-> host handler that is the one enforcement point — see ARCHITECTURE.md / HOST_API.md.
+> (`session.smart` / `ai` / `styles` / `audit`), each backed by a single host handler
+> that is the one enforcement point. Every handler reaches only a fixed trusted origin;
+> none lets the applet pick a destination — see ARCHITECTURE.md / HOST_API.md.
 
 ## Security claim language
 

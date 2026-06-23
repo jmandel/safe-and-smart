@@ -8,7 +8,6 @@ import {
 } from '@remote-dom/react/host';
 import {sanitizeVegaSpec} from './vega-sanitizer';
 import {sanitizeSvgMarkup} from '../safe-svg-validator';
-import {getAttachment} from '../attachment-registry';
 import {
   toSafeNumberEvent,
   toSafePointerEvent,
@@ -485,21 +484,17 @@ const TextareaRenderer = createRemoteComponentRenderer(function TextareaRenderer
   );
 });
 
-// Protected attachment. The applet passes only an opaque `handle` (from
-// clinical.fetchAttachment); the URL is resolved host-side from the registry, so an
-// applet can never set a raw src or learn the token-protected URL. The blob: src is
-// permitted by the host CSP (img-src blob:).
-const ImageRenderer = createRemoteComponentRenderer(function ImageRenderer({src, handle, alt}: any) {
+// Image. `src` must be a self-contained `data:` URL — the firewall rejects any
+// remote/relative src, so an image can never make a network request (a remote src
+// would be an applet-controlled egress/exfil channel). The applet shows bytes it
+// already holds (e.g. an inline FHIR Attachment's base64 `data`); there is no
+// host-side "fetch this URL for me" path.
+const ImageRenderer = createRemoteComponentRenderer(function ImageRenderer({src, alt}: any) {
   const altText = String(alt ?? 'image').slice(0, 200);
-  // A self-contained data: URL the applet already has (firewall-validated to be
-  // data: only — no network). The common case for inline attachment bytes.
   if (typeof src === 'string' && /^data:/i.test(src)) {
     return <img className="remote-image" src={src} alt={altText} />;
   }
-  // Otherwise an opaque handle from session.files.open (broker-fetched).
-  const attachment = typeof handle === 'string' ? getAttachment(handle) : undefined;
-  if (!attachment) return <div className="remote-image-error">No image source.</div>;
-  return <img className="remote-image" src={attachment.url} alt={altText} />;
+  return <div className="remote-image-error">No image source.</div>;
 });
 
 export const remoteComponentMap: RemoteComponentRendererMap = new Map([

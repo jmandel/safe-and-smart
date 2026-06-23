@@ -18,7 +18,8 @@ Most "SMART on FHIR app" designs hand each app the clinician's OAuth token and
 full browser network authority, then trust it. This inverts that: the wrapper
 holds the token and hands the applet a single **`session`** of brokered
 capabilities — `session.smart` (FHIR), `session.ai` (the model), `session.styles`,
-`session.files`, `session.audit` — never the token, never raw `fetch`. See
+`session.audit` — never the token, never raw `fetch`. Every capability reaches only a
+fixed trusted origin; none lets the applet pick a URL to fetch. See
 [docs/APPLET_API.md](docs/APPLET_API.md).
 
 Each applet is **untrusted code by construction**, contained in an opaque-origin

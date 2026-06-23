@@ -37,8 +37,8 @@ function ApiReference({onClose}: {onClose: () => void}) {
           <dd><code>.complete(req)</code> · <code>.stream(req, (delta) =&gt; …)</code></dd>
           <dt>session.styles</dt>
           <dd><code>.add(css)</code> → <code>&lt;ui.Box className&gt;</code></dd>
-          <dt>session.files</dt>
-          <dd><code>.open(&#123;url, title?&#125;)</code> → <code>&lt;ui.Image handle&gt;</code></dd>
+          <dt>documents</dt>
+          <dd>inline bytes → <code>&lt;ui.Image src=&#123;dataUrl&#125;&gt;</code> (data: only — no remote fetch)</dd>
           <dt>session.audit</dt>
           <dd><code>(&#123;code?, message&#125;)</code></dd>
           <dt>components</dt>

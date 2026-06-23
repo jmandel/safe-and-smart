@@ -153,17 +153,15 @@ export interface StylesApi {
   add(css: string): Promise<StylesheetResult>;
 }
 
-/** Documents: open a token-protected attachment → opaque handle for <Image>. */
-export interface FilesApi {
-  open(ref: AttachmentRequest): Promise<AttachmentResult>;
-}
-
-/** What the trusted host builds + returns over the handshake (the registry). */
+/** What the trusted host builds + returns over the handshake (the registry).
+ *  Note: there is deliberately no "fetch an arbitrary URL" capability — the broker
+ *  only ever talks to the fixed trusted origins (FHIR server, LLM gateway). Letting
+ *  an applet pick a request origin would be an egress/exfil channel. Documents are
+ *  read as bytes via `smart` and rendered with <Image src="data:…">. */
 export interface HostCapabilities {
   smart: SmartApi;
   ai: AiApi;
   styles: StylesApi;
-  files: FilesApi;
   audit(event: AppletAudit): Promise<void>;
 }
 
@@ -171,21 +169,6 @@ export interface HostCapabilities {
  *  probe (added applet-side, since the worker measures its own sandbox). */
 export interface Session extends HostCapabilities {
   probe: SecurityProbeResult;
-}
-
-export const AttachmentRequestSchema = z.object({
-  // A relative FHIR reference (e.g. "Binary/123" or a DocumentReference content
-  // url). The demo also accepts "demo:summary" to mint a generated sample doc.
-  url: z.string().min(1).max(4096),
-  title: z.string().max(200).optional(),
-});
-export type AttachmentRequest = z.infer<typeof AttachmentRequestSchema>;
-
-export interface AttachmentResult {
-  ok: boolean;
-  handle?: string;
-  contentType?: string;
-  error?: string;
 }
 
 export interface HostHandshake {

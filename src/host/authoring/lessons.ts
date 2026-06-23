@@ -147,9 +147,9 @@ function App({ session }) {
   },
   {
     id: 'files',
-    title: 'Showing documents — data you have vs. data you don’t',
+    title: 'Showing documents — display the bytes you already hold',
     prose:
-      "Documents aren't a special way to fetch — a FHIR document is usually a Binary or an Attachment, and you read it like anything else with `session.smart`. An Attachment often carries its bytes inline as base64 `data`. Once you have the bytes you display them yourself: build a `data:<contentType>;base64,<data>` URL and pass it to `<Image src>`. A data: URL is self-contained, so there's no fetch and nothing to leak (the wrapper only blocks applet-controlled *remote* image sources). You only need `session.files.open` for the one case you genuinely can't reach: an Attachment at an absolute URL on another server that needs the clinician's token — then the wrapper fetches it for you and returns an opaque handle for `<Image handle>`.",
+      "Documents aren't a special way to fetch — a FHIR document is usually a Binary or an Attachment, and you read it like anything else with `session.smart`. An Attachment usually carries its bytes inline as base64 `data` (plus a `contentType`). Once you have the bytes you display them yourself: build a `data:<contentType>;base64,<data>` URL and pass it to `<Image src>`. A data: URL is self-contained — no fetch, nothing to leak — which is exactly why `<Image src>` accepts data: URLs *only* and rejects any remote source. Notice there's no \"open this URL for me\" capability: letting your applet pick a URL for the wrapper to fetch would hand back the network egress the sandbox exists to remove. So you show data you already hold; you never ask the wrapper to reach an applet-chosen address.",
     code: app(`function App({ session }) {
   // In FHIR an Attachment often has inline base64 \`data\` + \`contentType\`. You
   // already have the bytes, so just show them — no fetch, no handle.
@@ -173,13 +173,13 @@ function App({ session }) {
     id: 'ship',
     title: 'That’s the whole model — now ship it',
     prose:
-      "Every capability is the same shape: you state intent through `session`, the wrapper does the privileged thing and returns a safe result — read data, call the model, style your surface, open a document, record an action. Nothing your applet does can escape the sandbox, whoever wrote it. Build here in the playground, then host the compiled bundle anywhere and load it with /run/?applet=<url>. Same sandbox, same rules.",
+      "Every capability is the same shape: you state intent through `session`, the wrapper does the privileged thing and returns a safe result — read data, call the model, style your surface, record an action. And every capability only ever reaches a fixed, trusted destination (the FHIR server, the model gateway) — there is no capability that lets your applet choose an address to reach, because that would be the exfil channel the sandbox exists to remove. Nothing your applet does can escape, whoever wrote it. Build here in the playground, then host the compiled bundle anywhere and load it with /run/?applet=<url>. Same sandbox, same rules.",
     code: app(`function App({ session }) {
   return (
     <ui.Stack gap={10}>
       <ui.Heading level={2}>You’ve got the model</ui.Heading>
       <ui.Alert tone="success" title="State intent → the wrapper does the privileged part">
-        session.smart · session.ai · session.styles · session.files · session.audit
+        session.smart · session.ai · session.styles · session.audit
       </ui.Alert>
       <ui.Text tone="muted">Edit any earlier lesson and re-run, or open the Examples tab.</ui.Text>
     </ui.Stack>

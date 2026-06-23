@@ -216,17 +216,50 @@ select.shell-pill option { color: #10223d; background: white; }
 .applet-error p { margin: 0; font-size: 13px; font-family: ui-monospace, monospace; color: #9b4444; word-break: break-word; }
 .applet-error-reload { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 9px; border: 1px solid #176a59; background: #176a59; color: white; cursor: pointer; }
 
-/* Browser authoring page (/author) */
-.authoring { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: calc(100vh - 32px); padding: 16px; box-sizing: border-box; }
-.authoring-editor { display: flex; flex-direction: column; min-height: 0; gap: 8px; }
-.authoring-toolbar { display: flex; align-items: center; gap: 12px; }
-.authoring-run { padding: 6px 14px; border-radius: 6px; border: 0; background: #2563eb; color: #fff; cursor: pointer; }
-.authoring-run:disabled { opacity: .6; cursor: default; }
-.authoring-hash { font: 12px ui-monospace, monospace; color: #64748b; }
-.authoring-textarea { flex: 1; min-height: 0; font: 13px ui-monospace, SFMono-Regular, monospace; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; resize: none; tab-size: 2; }
-.authoring-diagnostics { margin: 0; padding: 8px 12px; list-style: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; font: 12px ui-monospace, monospace; max-height: 140px; overflow: auto; }
-.authoring-preview { border: 1px solid #e2e8f0; border-radius: 8px; overflow: auto; background: #f8fafc; padding: 12px; }
-.authoring-placeholder { color: #64748b; padding: 24px; text-align: center; }
+/* ───── Playground (/author) ───── */
+.play { height: 100vh; display: flex; flex-direction: column; background: #eef2f7; }
+.play-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 9px 16px; background: #0e2034; color: #fff; }
+.play-brand { display: flex; align-items: center; gap: 10px; }
+.play-brand strong { font-size: 14px; display: block; }
+.play-sub { font-size: 11px; color: #93a6c0; }
+.play-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.play-tag { font: 11px ui-monospace, monospace; color: #b9f4ea; background: rgb(45 212 191 / 14%); border-radius: 999px; padding: 3px 9px; }
+.play-btn { border: 1px solid rgb(255 255 255 / 22%); background: rgb(255 255 255 / 8%); color: #eaf1fb; font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.play-btn.ghost:hover { background: rgb(255 255 255 / 16%); }
+.play-btn.primary { background: #2dd4bf; color: #0e2034; border-color: transparent; font-weight: 700; }
+.play-btn.primary:disabled { opacity: .6; cursor: default; }
+.play-btn kbd { font: 10px ui-monospace, monospace; background: rgb(14 32 52 / 25%); border-radius: 4px; padding: 1px 5px; }
+.play-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr) minmax(0, 1.1fr); gap: 12px; padding: 12px; box-sizing: border-box; }
+.play-examples { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 3px; }
+.play-examples-head { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #8595ab; padding: 6px 8px 3px; }
+.play-example { text-align: left; border: 0; background: transparent; border-radius: 8px; padding: 8px 10px; cursor: pointer; display: grid; gap: 2px; }
+.play-example:hover { background: #f1f5f9; }
+.play-example.active { background: #ecfdf7; box-shadow: inset 2px 0 0 #14b8a6; }
+.play-example-name { font-size: 13px; font-weight: 650; color: #10223d; }
+.play-example-blurb { font-size: 11px; line-height: 1.35; color: #64748b; }
+.play-editor { display: flex; flex-direction: column; min-height: 0; gap: 6px; }
+.play-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.play-tab { padding: 5px 11px; border: 1px solid #cbd5e1; border-bottom: 0; border-radius: 7px 7px 0 0; background: #e9eef4; cursor: pointer; font: 12px ui-monospace, monospace; }
+.play-tab.active { background: #0f172a; color: #e7eefb; border-color: #0f172a; }
+.play-textarea { flex: 1; min-height: 0; font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 14px; border: 1px solid #cbd5e1; border-radius: 10px; resize: none; tab-size: 2; background: #0f172a; color: #e7eefb; caret-color: #2dd4bf; }
+.play-diagnostics { margin: 0; padding: 8px 12px; list-style: none; background: #fff1f1; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; font: 12px ui-monospace, monospace; max-height: 150px; overflow: auto; }
+.play-preview { border: 1px solid #e2e8f0; border-radius: 12px; overflow: auto; background: #f8fafc; }
+.play-placeholder { color: #64748b; padding: 40px; text-align: center; }
+.play-ref-overlay { position: fixed; inset: 0; z-index: 60; background: rgb(10 25 48 / 45%); display: flex; justify-content: flex-end; }
+.play-ref { width: min(420px, 92vw); height: 100%; background: #fff; overflow: auto; padding: 18px 22px; box-shadow: -8px 0 28px rgb(10 25 48 / 25%); }
+.play-ref-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.play-ref-head button { border: 0; background: transparent; font-size: 22px; cursor: pointer; color: #64748b; }
+.play-ref p { font-size: 13px; line-height: 1.5; color: #46586f; }
+.play-ref dl { margin: 8px 0; }
+.play-ref dt { font-weight: 700; color: #0e7490; margin-top: 12px; font-size: 13px; }
+.play-ref dd { margin: 3px 0 0; font-size: 12.5px; line-height: 1.6; color: #334155; }
+.play-ref code { background: #eef2f7; border-radius: 4px; padding: 1px 4px; font-size: 11.5px; color: #1b5e80; }
+.play-ref-foot { border-top: 1px solid #eef2f7; padding-top: 10px; margin-top: 12px; font-size: 12px; }
+@media (max-width: 900px) {
+  .play-body { grid-template-columns: 1fr; grid-auto-rows: minmax(220px, auto); overflow: auto; }
+  .play { height: auto; min-height: 100vh; }
+}
 
 /* W3 text inputs / textarea (rendered inside the applet ShadowRoot) */
 .remote-field input[type], .remote-field textarea {

@@ -1,64 +1,60 @@
-import React, {useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {App} from './App';
 import {compileProject, type ProjectFile} from './authoring/esbuild-compile';
+import {EXAMPLES, type Example} from './authoring/examples';
 
-// A multi-file starter project: imports a real npm package (date-fns) from esm.sh,
-// a CSS Module (validated + installed via registerStylesheet), and a local
-// component file — compiled in the browser with esbuild-wasm and run in the same
-// locked sandbox.
-const STARTER: ProjectFile[] = [
-  {
-    path: 'App.tsx',
-    content: `import { format } from 'date-fns';
-import styles from './app.css';
-import { VitalTile } from './VitalTile';
+const clone = (files: ProjectFile[]): ProjectFile[] => files.map((f) => ({...f}));
 
-// React hooks + ui + runApplet are provided by the sandbox SDK (no import needed).
-function App({ session }) {
-  useEffect(() => { session.styles.add(styles); }, []);
-  const today = format(new Date(), 'EEEE, MMMM d');
-  return (
-    <ui.Stack gap={16}>
-      <ui.Heading level={2}>Multi-file applet</ui.Heading>
-      <ui.Text tone="muted">Patient: {session.smart.patient.display} · {today}</ui.Text>
-      <ui.Box className="row">
-        <VitalTile label="Heart rate" value="72 bpm" />
-        <VitalTile label="Blood pressure" value="118/76" />
-        <VitalTile label="SpO2" value="98%" />
-      </ui.Box>
-    </ui.Stack>
-  );
+function encodeProject(files: ProjectFile[]): string {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(files))));
+}
+function decodeProject(hash: string): ProjectFile[] | undefined {
+  try {
+    const m = hash.match(/[#&]p=([^&]+)/);
+    if (!m) return undefined;
+    const files = JSON.parse(decodeURIComponent(escape(atob(m[1]!))));
+    return Array.isArray(files) && files.every((f) => typeof f?.path === 'string') ? files : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
-runApplet(App, { appletId: 'authored.multi-file', appletVersion: '0.1.0' });
-`,
-  },
-  {
-    path: 'VitalTile.tsx',
-    content: `// A separate component file — bundled into the applet.
-export function VitalTile({ label, value }) {
+function ApiReference({onClose}: {onClose: () => void}) {
   return (
-    <ui.Box className="tile">
-      <ui.Inline className="t-label">{label}</ui.Inline>
-      <ui.Box className="t-value">{value}</ui.Box>
-    </ui.Box>
+    <div className="play-ref-overlay" onClick={onClose}>
+      <aside className="play-ref" onClick={(e) => e.stopPropagation()}>
+        <div className="play-ref-head">
+          <strong>session API</strong>
+          <button onClick={onClose} aria-label="Close">×</button>
+        </div>
+        <p>Your applet receives one prop, <code>session</code>. Globals provided here: <code>React</code> hooks, <code>ui</code>, <code>runApplet</code>.</p>
+        <dl>
+          <dt>session.smart</dt>
+          <dd><code>.patient</code> <code>.user</code> <code>.scopes</code><br />
+            <code>.search(type, params)</code> · <code>.read(type, id)</code> · <code>.request(url, init?)</code></dd>
+          <dt>session.ai</dt>
+          <dd><code>.complete(&#123;profile, messages, responseSchema?&#125;)</code><br /><code>.stream(req, (delta) =&gt; …)</code></dd>
+          <dt>session.styles</dt>
+          <dd><code>.add(css)</code> → use via <code>&lt;ui.Box className&gt;</code></dd>
+          <dt>session.files</dt>
+          <dd><code>.open(&#123;url, title?&#125;)</code> → <code>&lt;ui.Image handle&gt;</code></dd>
+          <dt>session.audit</dt>
+          <dd><code>(&#123;code?, message, detail?&#125;)</code></dd>
+          <dt>components</dt>
+          <dd>Stack · Grid · Box · Inline · Card · Heading · Text · Badge · Alert · Stat · Button · Select · Slider · Input · Textarea · Table · Vega · Svg · Image · Code</dd>
+          <dt>events</dt>
+          <dd>read <code>e.detail</code> — e.g. <code>onChange=&#123;(e) =&gt; e.detail.value&#125;</code></dd>
+        </dl>
+        <p className="play-ref-foot">Full guide in <a href="../" onClick={onClose}>the tutorial on the landing page</a>.</p>
+      </aside>
+    </div>
   );
 }
-`,
-  },
-  {
-    path: 'app.css',
-    content: `.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-.tile { display: block; padding: 16px; border-radius: 12px;
-  background: linear-gradient(135deg, #0ea5e9, #2563eb); color: #fff; }
-.t-label { display: block; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; opacity: .85; }
-.t-value { display: block; font-size: 22px; font-weight: 800; margin-top: 4px; }
-`,
-  },
-];
 
 export function Authoring() {
-  const [files, setFiles] = useState<ProjectFile[]>(STARTER);
+  const fromHash = typeof window !== 'undefined' ? decodeProject(window.location.hash) : undefined;
+  const [files, setFiles] = useState<ProjectFile[]>(fromHash ?? clone(EXAMPLES[0].files));
+  const [currentExample, setCurrentExample] = useState(fromHash ? 'shared' : EXAMPLES[0].id);
   const [active, setActive] = useState(0);
   const [compiled, setCompiled] = useState<string>();
   const [sha, setSha] = useState<string>();
@@ -66,23 +62,22 @@ export function Authoring() {
   const [diagnostics, setDiagnostics] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [runKey, setRunKey] = useState(0);
-
-  const updateActive = (content: string) =>
-    setFiles((prev) => prev.map((f, i) => (i === active ? {...f, content} : f)));
+  const [showRef, setShowRef] = useState(false);
+  const [shareMsg, setShareMsg] = useState('');
+  const filesRef = useRef(files);
+  filesRef.current = files;
 
   const run = async () => {
     setBusy(true);
     setDiagnostics([]);
     try {
-      const result = await compileProject(files);
+      const result = await compileProject(filesRef.current);
       setDiagnostics(result.diagnostics);
       setPackages(result.fetchedPackages);
       if (result.ok && result.script) {
         setCompiled(result.script);
         setSha(result.sha256);
         setRunKey((k) => k + 1);
-      } else {
-        setCompiled(undefined);
       }
     } catch (error) {
       setDiagnostics([(error as Error).message]);
@@ -91,52 +86,127 @@ export function Authoring() {
     }
   };
 
+  // Auto-run once on first load.
+  useEffect(() => {
+    void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadExample = (ex: Example) => {
+    setFiles(clone(ex.files));
+    setActive(0);
+    setCurrentExample(ex.id);
+    setShareMsg('');
+    if (window.location.hash) window.history.replaceState(null, '', window.location.pathname);
+  };
+
+  const updateActive = (content: string) =>
+    setFiles((prev) => prev.map((file, i) => (i === active ? {...file, content} : file)));
+
+  const onEditorKey = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      void run();
+      return;
+    }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      const el = event.currentTarget;
+      const {selectionStart: s, selectionEnd: e, value} = el;
+      const next = value.slice(0, s) + '  ' + value.slice(e);
+      updateActive(next);
+      requestAnimationFrame(() => {
+        el.selectionStart = el.selectionEnd = s + 2;
+      });
+    }
+  };
+
+  const share = async () => {
+    const url = `${window.location.origin}${window.location.pathname}#p=${encodeProject(files)}`;
+    window.history.replaceState(null, '', url);
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMsg('Link copied');
+    } catch {
+      setShareMsg('Link in address bar');
+    }
+    setTimeout(() => setShareMsg(''), 2500);
+  };
+
   return (
-    <div className="authoring">
-      <div className="authoring-editor">
-        <div className="authoring-toolbar">
-          <strong>Browser applet authoring</strong>
-          <button type="button" onClick={run} disabled={busy} className="authoring-run">
-            {busy ? 'Compiling…' : 'Compile & Run'}
-          </button>
-          {sha ? <span className="authoring-hash">sha256:{sha.slice(0, 12)}</span> : null}
-          {packages.length ? <span className="authoring-hash">npm: {packages.join(', ')}</span> : null}
+    <div className="play">
+      <header className="play-top">
+        <div className="play-brand">
+          <span className="shell-mark" aria-hidden>✚</span>
+          <div>
+            <strong>Applet playground</strong>
+            <span className="play-sub">edit · compile in-browser · run in the sandbox</span>
+          </div>
         </div>
-        <div className="authoring-tabs">
-          {files.map((f, i) => (
+        <div className="play-actions">
+          {sha ? <span className="play-tag">sha256:{sha.slice(0, 10)}</span> : null}
+          {packages.length ? <span className="play-tag">npm: {packages.join(', ')}</span> : null}
+          <button className="play-btn ghost" onClick={() => setShowRef(true)}>API reference</button>
+          <button className="play-btn ghost" onClick={share}>{shareMsg || 'Share'}</button>
+          <button className="play-btn primary" onClick={run} disabled={busy}>
+            {busy ? 'Compiling…' : '▶ Run'} <kbd>⌘↵</kbd>
+          </button>
+        </div>
+      </header>
+
+      <div className="play-body">
+        <aside className="play-examples">
+          <div className="play-examples-head">Examples</div>
+          {EXAMPLES.map((ex) => (
             <button
-              type="button"
-              key={f.path}
-              className={`authoring-tab${i === active ? ' active' : ''}`}
-              onClick={() => setActive(i)}
+              key={ex.id}
+              className={`play-example${currentExample === ex.id ? ' active' : ''}`}
+              onClick={() => loadExample(ex)}
             >
-              {f.path}
+              <span className="play-example-name">{ex.name}</span>
+              <span className="play-example-blurb">{ex.blurb}</span>
             </button>
           ))}
-        </div>
-        <textarea
-          className="authoring-textarea"
-          spellCheck={false}
-          value={files[active]!.content}
-          onChange={(event) => updateActive(event.target.value)}
-        />
-        {diagnostics.length > 0 ? (
-          <ul className="authoring-diagnostics">
-            {diagnostics.map((message, index) => (
-              <li key={index}>{message}</li>
+        </aside>
+
+        <section className="play-editor">
+          <div className="play-tabs">
+            {files.map((file, i) => (
+              <button
+                key={file.path}
+                className={`play-tab${i === active ? ' active' : ''}`}
+                onClick={() => setActive(i)}
+              >
+                {file.path}
+              </button>
             ))}
-          </ul>
-        ) : null}
-      </div>
-      <div className="authoring-preview">
-        {compiled ? (
-          <App key={runKey} appletSourceOverride={compiled} />
-        ) : (
-          <div className="authoring-placeholder">
-            Compile to bundle this multi-file project (with its npm import) and run it in the sandbox.
           </div>
-        )}
+          <textarea
+            className="play-textarea"
+            spellCheck={false}
+            value={files[active]?.content ?? ''}
+            onChange={(e) => updateActive(e.target.value)}
+            onKeyDown={onEditorKey}
+          />
+          {diagnostics.length > 0 ? (
+            <ul className="play-diagnostics">
+              {diagnostics.map((message, i) => (
+                <li key={i}>{message}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+
+        <section className="play-preview">
+          {compiled ? (
+            <App key={runKey} appletSourceOverride={compiled} />
+          ) : (
+            <div className="play-placeholder">{busy ? 'Compiling…' : 'Press Run to build and run.'}</div>
+          )}
+        </section>
       </div>
+
+      {showRef ? <ApiReference onClose={() => setShowRef(false)} /> : null}
     </div>
   );
 }

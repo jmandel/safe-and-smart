@@ -90,12 +90,14 @@ export function resolveFhirUrl(input: string, baseUrl: string): URL {
   if (/^[a-z][a-z\d+.-]*:/i.test(input) || input.startsWith('//')) {
     throw new Error('Applet FHIR requests must use a relative FHIR URL.');
   }
-  // Reject backslashes, encoded path separators, and ".." traversal (raw or
-  // percent-encoded) that could escape the FHIR base after resolution.
-  if (/\\/.test(input) || /%2f|%5c|%2e/i.test(input)) {
+  // Traversal/escape checks apply to the PATH only — query values legitimately
+  // contain encoded separators (e.g. a LOINC system url `code=http://loinc.org|…`
+  // percent-encodes to `%2F`). The path is what could escape the FHIR base.
+  const path = input.split('?')[0] ?? '';
+  if (/\\/.test(path) || /%2f|%5c|%2e/i.test(path)) {
     throw new Error('Applet FHIR request contains an encoded separator or escape.');
   }
-  if (/(^|\/)\.\.(\/|$)/.test(decodeURIComponent(input.split('?')[0] ?? ''))) {
+  if (/(^|\/)\.\.(\/|$)/.test(decodeURIComponent(path))) {
     throw new Error('Applet FHIR request contains a path traversal segment.');
   }
 

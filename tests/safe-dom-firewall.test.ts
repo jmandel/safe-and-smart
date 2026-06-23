@@ -105,17 +105,24 @@ describe('createSafeDomFirewall', () => {
     );
   });
 
-  it('allows a data: image src but rejects remote/relative src', () => {
+  it('allows a data:image/ src but rejects remote/relative/non-image src', () => {
     const fw = createSafeDomFirewall();
     expect(() =>
       fw.validateRecords([insert(el('a', 'ui-image', {properties: {src: 'data:image/png;base64,AAAA'}}))]),
     ).not.toThrow();
     expect(() =>
+      fw.validateRecords([insert(el('s', 'ui-image', {properties: {src: 'data:image/svg+xml;base64,AAAA'}}))]),
+    ).not.toThrow();
+    expect(() =>
       fw.validateRecords([insert(el('b', 'ui-image', {properties: {src: 'http://evil/x'}}))]),
-    ).toThrow(/src on <ui-image> must be a data: URL/);
+    ).toThrow(/src on <ui-image> must be a data:image\/ URL/);
     expect(() =>
       fw.validateRecords([insert(el('c', 'ui-image', {properties: {src: 'Binary/123'}}))]),
-    ).toThrow(/data: URL/);
+    ).toThrow(/data:image\/ URL/);
+    // a data: URL that isn't an image (e.g. text/html) is rejected too
+    expect(() =>
+      fw.validateRecords([insert(el('d', 'ui-image', {properties: {src: 'data:text/html,<b>x</b>'}}))]),
+    ).toThrow(/data:image\/ URL/);
   });
 
   it('enforces the text length quota', () => {

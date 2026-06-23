@@ -149,10 +149,10 @@ function App({ session }) {
     id: 'files',
     title: 'Showing documents — display the bytes you already hold',
     prose:
-      "Documents aren't a special way to fetch — a FHIR document is usually a Binary or an Attachment, and you read it like anything else with `session.smart`. An Attachment usually carries its bytes inline as base64 `data` (plus a `contentType`). Once you have the bytes you display them yourself: build a `data:<contentType>;base64,<data>` URL and pass it to `<Image src>`. A data: URL is self-contained — no fetch, nothing to leak — which is exactly why `<Image src>` accepts data: URLs *only* and rejects any remote source. Notice there's no \"open this URL for me\" capability: letting your applet pick a URL for the wrapper to fetch would hand back the network egress the sandbox exists to remove. So you show data you already hold; you never ask the wrapper to reach an applet-chosen address.",
+      "A document in FHIR is just more data: a Binary or an Attachment you read with `session.smart`, exactly like an Observation. Its bytes usually arrive inline — base64 `data` plus a `contentType`. To put one on screen, wrap those bytes in a `data:<contentType>;base64,<data>` URL and hand it to `<Image src>`. A data: URL carries the content itself, so the image draws with no network request — which is why `<Image src>` takes data: URLs and nothing else. Read the resource, build the URL, show it.",
     code: app(`function App({ session }) {
-  // In FHIR an Attachment often has inline base64 \`data\` + \`contentType\`. You
-  // already have the bytes, so just show them — no fetch, no handle.
+  // In FHIR an Attachment usually has inline base64 \`data\` + a \`contentType\`.
+  // You already hold the bytes, so wrap them in a data: URL and show them.
   const contentType = 'image/svg+xml';
   const data = btoa(
     "<svg xmlns='http://www.w3.org/2000/svg' width='240' height='120'>" +

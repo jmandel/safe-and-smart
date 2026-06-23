@@ -42,11 +42,16 @@ function validateStyleableProp(tag: string, property: string, value: unknown): v
       }
     }
   } else if (property === 'src') {
-    // Only self-contained data: URLs (no network, no exfil). A remote/relative URL
-    // would be an applet-controlled image source — exactly what we forbid.
+    // Only self-contained data:image/ URLs (no network, no exfil). A remote/relative
+    // URL would be an applet-controlled image source — exactly what we forbid. The
+    // image/ MIME prefix is required too: an <img> won't execute a non-image data:
+    // URL, but pinning it to image/ keeps the surface to what an image legitimately
+    // is and removes any ambiguity. SVG carried this way renders in the browser's
+    // image mode (no script, no external resource loads), so even a hostile SVG
+    // payload can't phone home.
     if (value == null) return;
-    if (typeof value !== 'string' || !/^data:/i.test(value)) {
-      throw new SafeDomViolation(`src on <${tag}> must be a data: URL.`);
+    if (typeof value !== 'string' || !/^data:image\//i.test(value)) {
+      throw new SafeDomViolation(`src on <${tag}> must be a data:image/ URL.`);
     }
     if (value.length > 16_000_000) {
       throw new SafeDomViolation(`src on <${tag}> exceeds the data: URL size limit.`);

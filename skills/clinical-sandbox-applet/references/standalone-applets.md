@@ -28,8 +28,9 @@ https://joshuamandel.com/safe-and-smart/run/?applet=https://you.example/applet.j
 
 The wrapper just fetches your source and sandboxes it; there is no registry,
 manifest upload, or redeploy. Registering an applet in a wrapper's `build.ts` /
-`REGISTRY` is **only** for shipping it inside that wrapper and listing it in the
-picker — a convenience, not a requirement. So an applet author can iterate on a
+`BUILTINS` (the `BUILTINS` array in `src/host/App.tsx`) is **only** for shipping it
+inside that wrapper and listing it in the picker — a convenience, not a
+requirement. So an applet author can iterate on a
 GitHub Pages bundle and demo it live against a real (or sandbox) SMART context
 they never had to stand up themselves. (Provenance controls — which wrappers
 choose to load which URLs — are a wrapper policy decision; see "provenance vs.
@@ -48,8 +49,9 @@ runApplet(App, {appletId: 'org.acme.my-applet', appletVersion: '1.0.0'});
 ```
 
 `runApplet` owns the worker-side protocol (handshake, security probe, Remote DOM
-wiring) and renders `<App clinical={…} context={…} securityProbe={…} />`. The
-author writes only `App` and uses any pure libraries (Zustand, etc.) normally.
+wiring) and renders `<App session={…} />` — one prop, with the
+`session.{smart,ai,styles,audit,probe}` surface. The author writes only `App` and
+uses any pure libraries (Zustand, etc.) normally.
 
 The two build invariants from `build-and-gotchas.md` still apply, and are exactly
 what makes a bundle URL-loadable: **classic IIFE, fully self-contained** (no
@@ -89,7 +91,7 @@ wrapper postMessages {nonce, port, appletSource} into the opaque launcher iframe
 launcher: new Worker(URL.createObjectURL(new Blob([appletSource],{type:'text/javascript'})))
    │  classic blob worker — no {type:'module'}
    ▼
-applet runs: handshake → brokered fhirRequest/llmComplete/audit only
+applet runs: handshake → brokered session.{smart,ai,styles,audit} only
 ```
 
 Crucial: the wrapper **fetches but never `eval`/`Function()`s** the bundle — it
@@ -111,7 +113,7 @@ cross-origin read (or the wrapper proxies it):
   and works even for hosts that send no CORS header.
 
 In the reference impl, the dev sandbox origin sends `ACAO: *`, which is why
-loading `?applet=http://127.0.0.1:4274/applets/growth-remote.js` works cross
+loading `?applet=http://127.0.0.1:4174/applets/growth-remote.js` works cross
 -origin out of the box.
 
 ## Provenance vs. containment (how much to trust the URL)

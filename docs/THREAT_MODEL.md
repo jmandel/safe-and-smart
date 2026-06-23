@@ -110,7 +110,8 @@ The product should distinguish **silent machine exfiltration** from ordinary aut
 
 - no `allow-same-origin` means the iframe has an opaque origin;
 - worker inherits that context;
-- the frame response sends `Clear-Site-Data` in the spike;
+- (`Clear-Site-Data` on the frame response was removed for performance — it is
+  non-load-bearing here: an opaque-origin launcher has no persistent storage to clear);
 - no service-worker or shared-worker capability is needed;
 - applet lifecycle terminates the worker;
 - production should use a unique, non-reused sandbox origin and no credentials.

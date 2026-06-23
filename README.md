@@ -34,7 +34,7 @@ iframe → DedicatedWorker:
 ```
 Trusted wrapper (real origin, has token)
   ├─ SMART client + OAuth token            never leaves this tier
-  ├─ handler registry → session.smart / ai / styles / files / audit
+  ├─ handler registry → session.smart / ai / styles / audit
   ├─ host-rendered components (React, Vega-Lite, tables…)
   └─ opaque <iframe sandbox="allow-scripts">      ← policy boundary
         └─ DedicatedWorker (classic blob worker)   ← the applet

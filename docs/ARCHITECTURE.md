@@ -9,7 +9,7 @@ LLM-written; it still cannot leak the token, call home, or touch the DOM.
 
 ```
 ┌─ Trusted wrapper (real origin; holds the SMART token) ───────────────────────┐
-│  • Handler registry (the broker): smart / ai / styles / files / audit        │
+│  • Handler registry (the broker): smart / ai / styles / audit                │
 │  • Host-side validators: Safe DOM mutation firewall, CSS + SVG validators,    │
 │    Vega sanitizer, FHIR URL/budget/scope enforcement                          │
 │  • Renders the applet's element tree with vetted React components in a        │
@@ -60,7 +60,7 @@ The applet has no ambient powers; it acts only through `session.*`. The design i
 ```
 
 - The **broker** (`clinical-broker.ts`) registers one handler per concern
-  (`smart`, `ai`, `styles`, `files`, `audit`) and composes them into the namespaced
+  (`smart`, `ai`, `styles`, `audit`) and composes them into the namespaced
   `session` object via `buildSession()`.
 - The **handshake returns that object directly** — `@quilted/threads` proxies the
   nested functions and clones the nested data, so the wire shape *is* the API shape.

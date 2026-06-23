@@ -40,10 +40,11 @@ they are, grouped by effect, so you can calibrate quickly.
 
 **Strengthened:**
 - **A host-page CSP was added** (defense-in-depth for C3): the trusted shell now
-  locks `img-src 'self' data: blob:`, `media-src`/`object-src 'none'`,
+  locks `img-src data: blob:`, `media-src`/`object-src 'none'`,
   `form-action 'none'`, `base-uri 'none'`, so a rendered-channel beacon fails even
-  if a URL-bearing component is added later or a host dependency is compromised. It
-  carries `script-src 'unsafe-eval'` for Vega's expression compiler (see §6).
+  if a URL-bearing component is added later or a host dependency is compromised. Its
+  `script-src` is `'self'` — Vega's expressions run through a CSP-safe AST
+  interpreter, not `eval` (see §6).
 - **Real SMART standalone launch** (`/fhir`): the wrapper performs the OAuth itself
   and holds the token; the applet still receives only brokered capabilities (C1).
   Clinician/encounter identity now comes from the launch (`openid`/`fhirUser`),
@@ -130,7 +131,7 @@ it depends on (cross-referenced to §4).
   DOM). Every renderer coerces props to enums/clamped-numbers/length-capped text;
   none emits an applet-controlled URL; the Vega spec is sanitized to reject any
   `url`/`href`/`src`/loader. The worker has no `document`/`window.location`, so
-  there is no navigation surface. A host-page CSP (`img-src 'self' data: blob:`,
+  there is no navigation surface. A host-page CSP (`img-src data: blob:`,
   `media-src/object-src 'none'`, `form-action 'none'`, `base-uri 'none'`) is a
   defense-in-depth backstop. Evidence: a hostile applet emitting
   `<img>/<a>/<iframe>` produced a `No component found for remote element` throw
@@ -233,10 +234,12 @@ We do **not** claim to prevent:
   budget enforced during retrieval, auto-paging is capped, request headers are
   allowlisted, and the Remote DOM connection is wrapped by a mutation budget +
   error-isolation gateway.
-- **Open — Phase 1:** the host-side mutation firewall still validates element/prop
-  *names and values* only at the renderer (unknown element → throw → contained).
-  A declarative Safe-DOM schema that validates each mutation record *before* it
-  reaches the receiver is the next phase.
+- *(closed)* **Declarative Safe-DOM mutation firewall.** Each mutation record is
+  now validated against `SAFE_DOM_SCHEMA` *before* it reaches the receiver
+  (`safe-dom-firewall.ts`, wired in `App.tsx`): unknown element/prop/event/attribute
+  → rejected; `style`/`className`/`src` validated by value (`src` must be a
+  `data:image/` URL). Verified by the `raw-mutation` hostile case (forged records
+  driven straight at the connection).
 - The public demo runs single-origin on GitHub Pages (wrapper and launcher share
   an origin; isolation still from the opaque iframe + meta-CSP). A production PHI
   deployment should use two registrable domains + server-set headers + a managed
@@ -275,7 +278,12 @@ the running wrapper, and asserted to produce **zero hits** on an independent can
 server **and** to leave the shell alive. Current hostile corpus (all CONTAINED):
 - `vega-usermeta` — smuggles an exfil URL through `usermeta.embedOptions.config`.
 - `import-scripts` — `importScripts` via own-property, prototype, and nested Worker.
-- `disallowed-element` — raw `<img>` (exercises the error boundary).
+- `disallowed-element` — raw `<img>` (rejected by the Safe-DOM firewall).
+- `raw-mutation` — forged mutation records driven straight at the connection,
+  bypassing React (exercises the pre-receiver Safe-DOM firewall).
+- `styled-exfil` — a `url()` beacon smuggled through an applet stylesheet.
+- `svg-exfil` — an external reference smuggled through author SVG markup.
+- `image-src-exfil` — a remote / `handle` `src` forced onto `ui-image`.
 The corpus grows by one+ case per phase; a phase is not "done" until its new
 hostile cases are CONTAINED. Host-side controls are unit-tested across
 `tests/*.test.ts` (firewall, mutation gateway, CSS + SVG validators, safe events,

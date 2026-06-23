@@ -48,8 +48,10 @@ Done. Next:
   bun run build.ts        # host/landing/launcher + applet bundles (classic IIFE)
   node tools/serve.mjs    # wrapper: http://localhost:$HP   sandbox: http://127.0.0.1:$SP
 
-The starter ships two applets (Growth Explorer, Med Reconciliation) behind a
-picker. Two ways to run your own applet:
+The starter ships ten built-in applets (Growth Explorer, Med Reconciliation,
+Encounter Cockpit, Styled Vitals, Care Pathway SVG, Order Entry, Note Summarizer,
+FHIR Fetch Bridge, Document Viewer, intrinsic-JSX demo) behind a working picker.
+Two ways to run your own applet:
 
 A) HOST IT ANYWHERE, NO REGISTRATION. Build any compatible applet to one classic
    bundle (see the skill's standalone-applets.md) and serve it with permissive
@@ -61,7 +63,7 @@ A) HOST IT ANYWHERE, NO REGISTRATION. Build any compatible applet to one classic
 B) BUNDLE IT INTO THIS WRAPPER (so it ships in the picker):
   1. Write src/applet/<your>/App.tsx (a React component; Zustand etc. work as-is).
   2. Add src/applet/<your>/entry.tsx: runApplet(App, {appletId, appletVersion}).
-  3. Register it in build.ts (APPLETS) and in REGISTRY in src/host/App.tsx.
+  3. Register it in build.ts (APPLETS) and in BUILTINS in src/host/App.tsx.
 To use a real SMART launch instead of the open-endpoint demo, open /fhir/ (or the landing page)
 (see skill references/capabilities.md). To deploy to GitHub Pages, build with
 VITE_BASE=/<repo>/ VITE_SANDBOX_ORIGIN=self (see .github/workflows/deploy.yml).

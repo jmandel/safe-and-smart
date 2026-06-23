@@ -11,19 +11,21 @@ single trusted wrapper that does the SMART launch once. Applets are registry
 entries; running another is just selecting it. Every applet is equally contained,
 so onboarding a new one is a content decision, not a security review.
 
-Minimal registry shape (wrapper side):
+Registry shape (wrapper side) — the `BUILTINS` array in `src/host/App.tsx`:
 ```ts
-const REGISTRY = [
-  {id: 'growth-explorer', title: 'Growth Explorer', source: growthAppletSource},
-  {id: 'med-reconciler',  title: 'Med Reconciler',  source: medAppletSource},
+const BUILTINS = [
+  {label: 'Growth Explorer',          value: ''},                       // the default
+  {label: 'Medication Reconciliation', value: applet('med-recon.js')},
+  {label: 'Encounter Cockpit',         value: applet('encounter-cockpit.js')},
+  // … ten in total
 ];
-// Wrapper renders a picker; the chosen entry's `source` becomes the worker blob.
+// Wrapper renders a grouped picker; the chosen entry's bundle becomes the worker blob.
 ```
-To make applets independently selectable, build **each applet as its own
-self-contained classic worker bundle** (the build invariant) and have the launcher
-instantiate the chosen one. The reference impl currently bundles a single applet
-at build time; generalizing to a registry/picker is the natural next step and a
-great thing to demo.
+Each applet is built as its **own self-contained classic worker bundle** (the
+build invariant) and the launcher instantiates the chosen one. The reference impl
+**ships ten built-in applets behind a working picker** today (plus runtime
+URL-loading via `?applet=<url>`); adding another is just another `BUILTINS` entry
++ `build.ts` APPLETS entry.
 
 CISO pitch: *"Enable one wrapper; safety is a property of the wrapper, not a
 promise each app makes."*
@@ -77,7 +79,7 @@ Once the source is untrusted, the **broker becomes the real attack surface** —
 that's where to add controls:
 - **Capability abuse within scope.** The applet can't exfiltrate over the network,
   but could try to launder data *through* a granted capability (encode it into a
-  FHIR write, or into an `llmComplete` prompt sent to a logged/third-party model).
+  FHIR write, or into a `session.ai` prompt sent to a logged/third-party model).
   Defenses: read-only by default, per-applet scope limiting, broker quotas/rate
   limits, and treating each LLM destination as part of the trust boundary.
 - **Resource abuse / DoS.** It's already off the main thread; add an execution

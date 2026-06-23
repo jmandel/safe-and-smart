@@ -74,7 +74,7 @@ const ms = s.length > 10 ? Date.parse(s) : Date.parse(`${s}T00:00:00Z`);
 For demos, `https://r4.smarthealthit.org` is an open R4 server (no auth) with
 Synthea patients and proper CORS (reflects the Origin). The wrapper's host page
 has no `connect-src` restriction, so its `fetch` to the FHIR server works. The
-applet's `fhirRequest` headers stay CORS-safelisted (`accept`), so no preflight.
+applet's `session.smart` request headers stay CORS-safelisted (`accept`), so no preflight.
 A good pediatric patient with longitudinal vitals: `0d1c4ee3-084d-4818-9689-783e94162748`
 (Lloyd Rippin, born 2012; height/weight/BMI from birth).
 

@@ -37,6 +37,7 @@ select.shell-pill {
 }
 select.shell-pill option { color: #10223d; background: white; }
 .shell-main { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 18px; padding: 20px; max-width: 1600px; margin: 0 auto; }
+.shell-main--no-audit { grid-template-columns: minmax(0, 1fr); }
 .applet-surface { min-width: 0; }
 /* The shadow host should not introduce its own layout box; let the contained
    applet tree flow as the surface's content. */
@@ -148,12 +149,13 @@ select.shell-pill option { color: #10223d; background: white; }
 .landing-entry.accent .landing-cta { color: #6fe0c0; }
 /* Top-to-bottom applet tutorial */
 .landing-try { margin-top: 44px; }
-.landing-code { margin: 0; background: #0f172a; color: #e7eefb; border-radius: 12px; padding: 16px 18px; overflow: auto; font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
-.landing-code code { white-space: pre; }
-.tut-intro { max-width: 760px; margin: 0 auto 24px; text-align: center; font-size: 15px; line-height: 1.5; color: #44566f; }
+.landing-code { margin: 0; max-width: 100%; box-sizing: border-box; background: #0f172a; color: #e7eefb; border-radius: 12px; padding: 16px 18px; overflow-x: auto; font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; text-shadow: none; }
+.landing-code code { white-space: pre; background: none; padding: 0; font-size: inherit; color: inherit; }
+.tut-intro { max-width: 760px; margin: 0 auto 24px; text-align: center; font-size: 15px; line-height: 1.6; color: #44566f; }
 .tut-intro code, .tut-prose code { background: #e8f1f7; border-radius: 5px; padding: 1px 5px; font-size: .92em; color: #1b5e80; }
-.tutorial { max-width: 820px; margin: 0 auto; display: grid; gap: 22px; }
-.tut-step { background: white; border: 1px solid #e4e9f1; border-radius: 16px; padding: 20px 22px; box-shadow: 0 2px 10px rgb(23 43 70 / 4%); }
+.tut-cta { display: inline-block; margin-top: 4px; font-weight: 700; color: #0e7490; }
+.tutorial { max-width: 820px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.tut-step { min-width: 0; background: white; border: 1px solid #e4e9f1; border-radius: 16px; padding: 20px 22px; box-shadow: 0 2px 10px rgb(23 43 70 / 4%); }
 .tut-head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .tut-n { flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: #0e2034; color: #2dd4bf; font-weight: 800; font-size: 14px; }
 .tut-head h3 { margin: 0; font-size: 17px; color: #10223d; }
@@ -231,13 +233,29 @@ select.shell-pill option { color: #10223d; background: white; }
 .play-btn.primary:disabled { opacity: .6; cursor: default; }
 .play-btn kbd { font: 10px ui-monospace, monospace; background: rgb(14 32 52 / 25%); border-radius: 4px; padding: 1px 5px; }
 .play-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr) minmax(0, 1.1fr); gap: 12px; padding: 12px; box-sizing: border-box; }
-.play-examples { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px; overflow: auto; display: flex; flex-direction: column; gap: 3px; }
-.play-examples-head { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #8595ab; padding: 6px 8px 3px; }
-.play-example { text-align: left; border: 0; background: transparent; border-radius: 8px; padding: 8px 10px; cursor: pointer; display: grid; gap: 2px; }
-.play-example:hover { background: #f1f5f9; }
-.play-example.active { background: #ecfdf7; box-shadow: inset 2px 0 0 #14b8a6; }
-.play-example-name { font-size: 13px; font-weight: 650; color: #10223d; }
-.play-example-blurb { font-size: 11px; line-height: 1.35; color: #64748b; }
+.play-modes { display: inline-flex; gap: 2px; margin-left: 8px; background: rgb(255 255 255 / 8%); border-radius: 8px; padding: 2px; }
+.play-modes button { border: 0; background: transparent; color: #c9d6e8; font: inherit; font-size: 12.5px; padding: 4px 12px; border-radius: 6px; cursor: pointer; }
+.play-modes button.active { background: #2dd4bf; color: #0e2034; font-weight: 700; }
+.play-side { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 7px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.play-side-item { text-align: left; border: 0; background: transparent; border-radius: 8px; padding: 9px 10px; cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 2px 9px; align-items: center; }
+.play-side-item:hover { background: #f1f5f9; }
+.play-side-item.active { background: #ecfdf7; box-shadow: inset 2px 0 0 #14b8a6; }
+.play-side-n { grid-row: span 2; width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; background: #0e2034; color: #2dd4bf; font-size: 12px; font-weight: 800; }
+.play-side-name { font-size: 13px; font-weight: 650; color: #10223d; }
+.play-side-blurb { font-size: 11px; line-height: 1.35; color: #64748b; }
+.play-lesson { background: #fff; border: 1px solid #e4e9f1; border-radius: 12px; padding: 14px 16px; }
+.play-lesson-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.play-lesson-step { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #8595ab; font-weight: 700; }
+.play-lesson-nav { display: flex; gap: 6px; }
+.play-lesson-nav button { border: 1px solid #cbd5e1; background: #fff; border-radius: 7px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; color: #1b4f6b; }
+.play-lesson-nav button:disabled { opacity: .4; cursor: default; }
+.play-lesson h2 { margin: 4px 0 6px; font-size: 17px; color: #10223d; }
+.play-lesson p { margin: 0; font-size: 13.5px; line-height: 1.6; color: #46586f; }
+.play-lesson-hint { display: block; margin-top: 8px; font-size: 11.5px; color: #8595ab; }
+.play-editor-wrap { flex: 1; min-height: 160px; overflow: auto; border-radius: 10px; background: #2d2d2d; }
+.code-editor { min-height: 100%; }
+.code-editor-ta { outline: none; }
+.code-editor-pre { margin: 0; }
 .play-editor { display: flex; flex-direction: column; min-height: 0; gap: 6px; }
 .play-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .play-tab { padding: 5px 11px; border: 1px solid #cbd5e1; border-bottom: 0; border-radius: 7px 7px 0 0; background: #e9eef4; cursor: pointer; font: 12px ui-monospace, monospace; }

@@ -1,9 +1,23 @@
 import React from 'react';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-tsx';
+import 'prismjs/themes/prism-tomorrow.css';
+import {LESSONS} from './authoring/lessons';
 
 // Base-aware links into the distinct wrapper entry points (/run, /fhir). Trailing
 // slashes avoid a Pages 301. asset() builds an absolute URL under the base.
 const base = import.meta.env.BASE_URL;
 const asset = (path: string) => `${base}${path}`;
+
+function Highlighted({code}: {code: string}) {
+  return (
+    <pre className="landing-code">
+      <code dangerouslySetInnerHTML={{__html: Prism.highlight(code, Prism.languages.tsx!, 'tsx')}} />
+    </pre>
+  );
+}
 
 interface Entry {
   title: string;
@@ -52,119 +66,6 @@ const ENTRIES: Entry[] = [
   },
 ];
 
-interface TutorialStep {
-  n: string;
-  title: string;
-  prose: string;
-  code: string;
-}
-
-// A linear, top-to-bottom tutorial over the whole `session.*` surface. Each step is
-// prose + a runnable snippet. (In the playground, React hooks, `ui`, and `runApplet`
-// are provided as globals — no imports needed.)
-const TUTORIAL: TutorialStep[] = [
-  {
-    n: '1',
-    title: 'An applet is a sandboxed React component',
-    prose:
-      'You write an ordinary React component. It receives one prop — `session` — and renders with a curated component set. It has no network, no DOM, and no storage: every side effect goes through `session`. `runApplet` hands your component to the wrapper.',
-    code: `function App({ session }) {
-  return (
-    <ui.Stack gap={12}>
-      <ui.Heading level={2}>Hello, {session.smart.patient.display}</ui.Heading>
-      <ui.Text tone="muted">Sandboxed — no token, no DOM, no ambient network.</ui.Text>
-      <ui.Button onPress={() => session.audit({ message: 'said hi' })}>Log an event</ui.Button>
-    </ui.Stack>
-  );
-}
-
-runApplet(App, { appletId: 'org.example.hello', appletVersion: '0.1.0' });`,
-  },
-  {
-    n: '2',
-    title: 'Patient context & FHIR — session.smart',
-    prose:
-      '`session.smart` is your SMART client: the launch context you read (`patient`, `user`, `scopes`) and scoped FHIR you call (`search` / `read` / `request`). No token, no absolute URL — the wrapper attaches the credential and validates the request. (Prefer a drop-in client? Point `fhirclient` at https://fhir.internal/.)',
-    code: `const vitals = await session.smart.search('Observation', {
-  patient: session.smart.patient.id,
-  category: 'vital-signs',
-  _count: 200,
-});
-const patient = await session.smart.read('Patient', session.smart.patient.id);`,
-  },
-  {
-    n: '3',
-    title: 'The model — session.ai',
-    prose:
-      'OpenAI-compatible. `profile` selects an approved model (no API key in the applet). Use `complete` for a single response (optionally structured via `responseSchema`), or `stream` for token-by-token deltas through a callback. The `openai` SDK pointed at https://llm.internal/v1 also works.',
-    code: `// streaming
-await session.ai.stream(
-  { profile: 'summarizer', messages: [{ role: 'user', content: note }] },
-  (delta) => setText((t) => t + delta),
-);
-
-// or structured JSON
-const res = await session.ai.complete({
-  profile: 'clinical-summary',
-  messages: [{ role: 'user', content: JSON.stringify(evidence) }],
-  responseSchema: { type: 'object', properties: { summary: { type: 'string' } } },
-});`,
-  },
-  {
-    n: '4',
-    title: 'Your own CSS — session.styles',
-    prose:
-      'Real design beyond the component props: grids, @media, @keyframes, gradients. You hand over CSS; the wrapper validates it (no external references) and installs it scoped to your surface — it cannot touch the host chrome. Reference your classes via <ui.Box className>.',
-    code: `const css = \`.grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
-.tile { padding:16px; border-radius:12px; background:linear-gradient(135deg,#0ea5e9,#2563eb); color:#fff; }
-@keyframes rise { from { opacity:0; transform:translateY(8px) } to { opacity:1 } }\`;
-
-useEffect(() => { session.styles.add(css); }, []);
-// ...
-<ui.Box className="grid"><ui.Box className="tile">72 bpm</ui.Box></ui.Box>`,
-  },
-  {
-    n: '5',
-    title: 'Protected documents — session.files',
-    prose:
-      'Display a token-protected attachment without ever holding its URL or token. `open` returns an opaque handle; <ui.Image handle> renders it. The applet can only pass a handle — never a raw src — so an image can never point at an external URL.',
-    code: `const r = await session.files.open({ url: 'Binary/123', title: 'Discharge summary' });
-if (r.ok) setHandle(r.handle);
-// ...
-{handle ? <ui.Image handle={handle} alt="Discharge summary" /> : null}`,
-  },
-  {
-    n: '6',
-    title: 'Accountability — session.audit',
-    prose:
-      'Record clinician actions to the trusted, append-only log (production: forwarded to the EHR audit trail). The wrapper already audits every brokered call; this adds your own semantic events. Prefer a `code` + minimal `detail` over PHI in the message.',
-    code: `session.audit({
-  code: 'applet.review-accepted',
-  message: \`accepted reconciliation for \${med}\`,
-});`,
-  },
-  {
-    n: '7',
-    title: 'Components & events',
-    prose:
-      'You render with a curated set (no raw HTML — there is no DOM in the worker). Layout/text: Stack, Grid, Box, Card, Heading, Text, Badge, Alert, Stat. Interactive: Button, Select, Slider, Input, Textarea. Data/graphics: Table, Vega, Svg, Image. Events arrive as bounded snapshots — read `e.detail`.',
-    code: `<ui.Input label="Dose" onChange={(e) => setDose(e.detail.value)}
-  onKeyDown={(e) => { if (e.detail.key === 'Enter') submit(); }} />
-
-<ui.Select options={options} onChange={(e) => setMetric(e.detail.value)} />
-
-<ui.Vega spec={{ data: { values: rows }, mark: 'line',
-  encoding: { x: { field: 'date', type: 'temporal' }, y: { field: 'value', type: 'quantitative' } } }} />`,
-  },
-  {
-    n: '8',
-    title: 'Run it',
-    prose:
-      'Fastest path: open the playground, edit, and press Compile & Run — it compiles in your browser (multi-file, real npm imports) and runs in the same locked sandbox. Or build a self-contained bundle and load it from anywhere: /run/?applet=https://your-host/applet.js. Same sandbox, same rules.',
-    code: `// host a bundle anywhere CORS-enabled, then:
-//   https://<this-wrapper>/run/?applet=https://your-host/applet.js`,
-  },
-];
 
 export function Landing() {
   return (
@@ -208,29 +109,28 @@ export function Landing() {
         ))}
       </section>
 
-      <h2 className="landing-try" id="tutorial">Write an applet — a walkthrough</h2>
+      <h2 className="landing-try" id="tutorial">How an applet works</h2>
       <p className="tut-intro">
-        The whole API an applet sees is one prop, <code>session</code>, plus a component set. Read
-        top to bottom; each step is runnable. When you&rsquo;re ready, paste any of it into the{' '}
-        <a href={asset('author/')}>playground</a>.
+        An applet here isn&rsquo;t a normal web app — the wrapper holds the clinician&rsquo;s login and
+        runs your code in a sealed sandbox. This walks the model up from scratch, top to bottom.
+        Prefer to learn by doing?{' '}
+        <a className="tut-cta" href={asset('author/')}>▶ Open the interactive tutorial</a>.
       </p>
       <section className="tutorial">
-        {TUTORIAL.map((step) => (
-          <article className="tut-step" key={step.n}>
+        {LESSONS.map((step, i) => (
+          <article className="tut-step" key={step.id}>
             <div className="tut-head">
-              <span className="tut-n">{step.n}</span>
+              <span className="tut-n">{i + 1}</span>
               <h3>{step.title}</h3>
             </div>
             <p className="tut-prose">{step.prose}</p>
-            <pre className="landing-code">
-              <code>{step.code}</code>
-            </pre>
+            <Highlighted code={step.code} />
           </article>
         ))}
         <p className="tut-foot">
-          Everything is typed, and the wrapper validates every element, style, FHIR call, and SVG —
-          unsafe code fails closed rather than escaping. There is no token, no DOM, and no ambient
-          network inside an applet, whoever wrote it.
+          That&rsquo;s the whole model — state intent through <code>session</code>, and the wrapper does
+          the privileged part. Try it live in the{' '}
+          <a href={asset('author/')}>playground</a>.
         </p>
       </section>
 

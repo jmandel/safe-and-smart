@@ -50,6 +50,8 @@ Trusted wrapper (real origin, has token)
   authors (+ components and events).
 - [docs/HOST_API.md](docs/HOST_API.md) — the wrapper's capability registry and how
   to add a capability.
+- [docs/WRAPPER_CONFIG.md](docs/WRAPPER_CONFIG.md) — the wrapper's chrome
+  configuration (header/picker/audit) and presets.
 - [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) — boundaries, the CSS/CSP guarantee,
   the attachment model.
 - [docs/SECURITY_CLAIMS_AND_ASSUMPTIONS.md](docs/SECURITY_CLAIMS_AND_ASSUMPTIONS.md)

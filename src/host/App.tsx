@@ -14,16 +14,40 @@ import {guardConnection} from './mutation-gateway';
 import {createSafeDomFirewall} from './safe-dom-firewall';
 import {ShadowSurface} from './ShadowSurface';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Wrapper configuration. The wrapper renders the same sandboxed applet in several
+// contexts (full demo shell, SMART launch, embedded playground preview), so its
+// chrome is configurable. This is the committed, documented config surface — see
+// docs/WRAPPER_CONFIG.md. Every field defaults to the full demo shell; presets are
+// just bundles of these fields.
+export interface WrapperConfig {
+  /** Top bar (brand + patient + status). Default true. */
+  header?: boolean;
+  /** Applet picker dropdown in the header. Default true. Meaningless when the
+   *  applet is fixed (e.g. an embedded preview), so turn it off there. */
+  picker?: boolean;
+  /** The trusted-shell capability audit panel. Default true. */
+  audit?: boolean;
+}
+
+const FULL_CHROME: Required<WrapperConfig> = {header: true, picker: true, audit: true};
+/** Preset for an embedded preview (playground): no picker, slim — just the applet
+ *  surface and the audit log so you can watch the brokered calls. */
+export const PREVIEW_CHROME: WrapperConfig = {header: false, picker: false, audit: true};
+
 export function App({
   smartInit,
   appletSourceOverride,
+  config,
 }: {
   smartInit?: import('./smart-launch').SmartInit;
   // In-memory applet source (e.g. compiled in the browser authoring page). When
   // present it runs through the identical sandbox/launcher/firewall path instead
   // of being fetched from a URL.
   appletSourceOverride?: string;
+  config?: WrapperConfig;
 } = {}) {
+  const chrome = {...FULL_CHROME, ...config};
   const receiver = useMemo(() => new RemoteReceiver({retain, release}), []);
   const broker = useMemo(() => new ClinicalBroker(smartInit), [smartInit]);
   const nonce = useMemo(() => crypto.randomUUID(), []);
@@ -168,27 +192,29 @@ export function App({
 
   return (
     <div className="shell">
-      <header className="shell-header">
-        <div className="shell-brand">
-          <div className="shell-mark" aria-hidden>✚</div>
-          <div className="shell-titles">
-            <h1>Clinical Applet Sandbox</h1>
-            <p className="shell-sub">{broker.context.user.display}</p>
+      {chrome.header ? (
+        <header className="shell-header">
+          <div className="shell-brand">
+            <div className="shell-mark" aria-hidden>✚</div>
+            <div className="shell-titles">
+              <h1>Clinical Applet Sandbox</h1>
+              <p className="shell-sub">{broker.context.user.display}</p>
+            </div>
           </div>
-        </div>
-        <div className="shell-context">
-          <span className="shell-pill shell-pill--patient" title="Patient in context">
-            {broker.context.patient.display}
-          </span>
-          <AppletPicker />
-          <span className={`shell-status is-${status}`} title={`Sandbox ${status}`}>
-            <span className="shell-dot" aria-hidden />
-            {status === 'connected' ? 'Live' : status}
-          </span>
-        </div>
-      </header>
+          <div className="shell-context">
+            <span className="shell-pill shell-pill--patient" title="Patient in context">
+              {broker.context.patient.display}
+            </span>
+            {chrome.picker ? <AppletPicker /> : null}
+            <span className={`shell-status is-${status}`} title={`Sandbox ${status}`}>
+              <span className="shell-dot" aria-hidden />
+              {status === 'connected' ? 'Live' : status}
+            </span>
+          </div>
+        </header>
+      ) : null}
 
-      <main className="shell-main">
+      <main className={`shell-main${chrome.audit ? '' : ' shell-main--no-audit'}`}>
         <section className="applet-surface" aria-label="Sandboxed clinical applet">
           {status === 'error' ? (
             <div className="applet-loading" role="alert">
@@ -206,28 +232,30 @@ export function App({
           </AppletErrorBoundary>
         </section>
 
-        <aside className="audit-panel" aria-label="Trusted broker audit log">
-          <h2>
-            Trusted-shell capability audit
-            {mutations > 0 ? <span className="audit-stat">{mutations.toLocaleString()} mutations</span> : null}
-          </h2>
-          {audit.length === 0 ? (
-            <div className="audit-empty">No applet capability calls yet.</div>
-          ) : (
-            <ol className="audit-list">
-              {audit.map((record, index) => (
-                <li className="audit-item" key={`${record.at}-${index}`}>
-                  <strong>{record.operation}</strong>
-                  <span>{record.summary}</span>
-                  <small>
-                    {new Date(record.at).toLocaleTimeString()} · {record.outcome}
-                    {record.durationMs == null ? '' : ` · ${record.durationMs} ms`}
-                  </small>
-                </li>
-              ))}
-            </ol>
-          )}
-        </aside>
+        {chrome.audit ? (
+          <aside className="audit-panel" aria-label="Trusted broker audit log">
+            <h2>
+              Trusted-shell capability audit
+              {mutations > 0 ? <span className="audit-stat">{mutations.toLocaleString()} mutations</span> : null}
+            </h2>
+            {audit.length === 0 ? (
+              <div className="audit-empty">No applet capability calls yet.</div>
+            ) : (
+              <ol className="audit-list">
+                {audit.map((record, index) => (
+                  <li className="audit-item" key={`${record.at}-${index}`}>
+                    <strong>{record.operation}</strong>
+                    <span>{record.summary}</span>
+                    <small>
+                      {new Date(record.at).toLocaleTimeString()} · {record.outcome}
+                      {record.durationMs == null ? '' : ` · ${record.durationMs} ms`}
+                    </small>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </aside>
+        ) : null}
       </main>
 
       <iframe

@@ -1,7 +1,9 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {App} from './App';
+import {App, PREVIEW_CHROME} from './App';
 import {compileProject, type ProjectFile} from './authoring/esbuild-compile';
 import {EXAMPLES, type Example} from './authoring/examples';
+import {LESSONS, lessonProject} from './authoring/lessons';
+import {CodeEditor} from './authoring/CodeEditor';
 
 const clone = (files: ProjectFile[]): ProjectFile[] => files.map((f) => ({...f}));
 
@@ -27,34 +29,34 @@ function ApiReference({onClose}: {onClose: () => void}) {
           <strong>session API</strong>
           <button onClick={onClose} aria-label="Close">×</button>
         </div>
-        <p>Your applet receives one prop, <code>session</code>. Globals provided here: <code>React</code> hooks, <code>ui</code>, <code>runApplet</code>.</p>
+        <p>Your applet gets one prop, <code>session</code>. Globals here: <code>React</code> hooks, <code>ui</code>, <code>runApplet</code>.</p>
         <dl>
           <dt>session.smart</dt>
-          <dd><code>.patient</code> <code>.user</code> <code>.scopes</code><br />
-            <code>.search(type, params)</code> · <code>.read(type, id)</code> · <code>.request(url, init?)</code></dd>
+          <dd><code>.patient .user .scopes</code> · <code>.search(type, params)</code> · <code>.read(type, id)</code> · <code>.request(url, init?)</code></dd>
           <dt>session.ai</dt>
-          <dd><code>.complete(&#123;profile, messages, responseSchema?&#125;)</code><br /><code>.stream(req, (delta) =&gt; …)</code></dd>
+          <dd><code>.complete(req)</code> · <code>.stream(req, (delta) =&gt; …)</code></dd>
           <dt>session.styles</dt>
-          <dd><code>.add(css)</code> → use via <code>&lt;ui.Box className&gt;</code></dd>
+          <dd><code>.add(css)</code> → <code>&lt;ui.Box className&gt;</code></dd>
           <dt>session.files</dt>
           <dd><code>.open(&#123;url, title?&#125;)</code> → <code>&lt;ui.Image handle&gt;</code></dd>
           <dt>session.audit</dt>
-          <dd><code>(&#123;code?, message, detail?&#125;)</code></dd>
+          <dd><code>(&#123;code?, message&#125;)</code></dd>
           <dt>components</dt>
           <dd>Stack · Grid · Box · Inline · Card · Heading · Text · Badge · Alert · Stat · Button · Select · Slider · Input · Textarea · Table · Vega · Svg · Image · Code</dd>
-          <dt>events</dt>
-          <dd>read <code>e.detail</code> — e.g. <code>onChange=&#123;(e) =&gt; e.detail.value&#125;</code></dd>
         </dl>
-        <p className="play-ref-foot">Full guide in <a href="../" onClick={onClose}>the tutorial on the landing page</a>.</p>
       </aside>
     </div>
   );
 }
 
+type Mode = 'learn' | 'examples';
+
 export function Authoring() {
-  const fromHash = typeof window !== 'undefined' ? decodeProject(window.location.hash) : undefined;
-  const [files, setFiles] = useState<ProjectFile[]>(fromHash ?? clone(EXAMPLES[0].files));
-  const [currentExample, setCurrentExample] = useState(fromHash ? 'shared' : EXAMPLES[0].id);
+  const shared = typeof window !== 'undefined' ? decodeProject(window.location.hash) : undefined;
+  const [mode, setMode] = useState<Mode>(shared ? 'examples' : 'learn');
+  const [lessonIdx, setLessonIdx] = useState(0);
+  const [exampleId, setExampleId] = useState<string>(shared ? 'shared' : EXAMPLES[0].id);
+  const [files, setFiles] = useState<ProjectFile[]>(shared ?? lessonProject(LESSONS[0]));
   const [active, setActive] = useState(0);
   const [compiled, setCompiled] = useState<string>();
   const [sha, setSha] = useState<string>();
@@ -67,11 +69,11 @@ export function Authoring() {
   const filesRef = useRef(files);
   filesRef.current = files;
 
-  const run = async () => {
+  const run = async (target: ProjectFile[] = filesRef.current) => {
     setBusy(true);
     setDiagnostics([]);
     try {
-      const result = await compileProject(filesRef.current);
+      const result = await compileProject(target);
       setDiagnostics(result.diagnostics);
       setPackages(result.fetchedPackages);
       if (result.ok && result.script) {
@@ -86,38 +88,36 @@ export function Authoring() {
     }
   };
 
-  // Auto-run once on first load.
   useEffect(() => {
     void run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadExample = (ex: Example) => {
-    setFiles(clone(ex.files));
+  const load = (next: ProjectFile[]) => {
+    setFiles(next);
     setActive(0);
-    setCurrentExample(ex.id);
     setShareMsg('');
     if (window.location.hash) window.history.replaceState(null, '', window.location.pathname);
+    void run(next);
+  };
+  const loadLesson = (i: number) => {
+    setLessonIdx(i);
+    setMode('learn');
+    load(lessonProject(LESSONS[i]));
+  };
+  const loadExample = (ex: Example) => {
+    setExampleId(ex.id);
+    setMode('examples');
+    load(clone(ex.files));
   };
 
   const updateActive = (content: string) =>
-    setFiles((prev) => prev.map((file, i) => (i === active ? {...file, content} : file)));
+    setFiles((prev) => prev.map((f, i) => (i === active ? {...f, content} : f)));
 
-  const onEditorKey = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-      event.preventDefault();
+  const onEditorKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
       void run();
-      return;
-    }
-    if (event.key === 'Tab') {
-      event.preventDefault();
-      const el = event.currentTarget;
-      const {selectionStart: s, selectionEnd: e, value} = el;
-      const next = value.slice(0, s) + '  ' + value.slice(e);
-      updateActive(next);
-      requestAnimationFrame(() => {
-        el.selectionStart = el.selectionEnd = s + 2;
-      });
     }
   };
 
@@ -133,65 +133,85 @@ export function Authoring() {
     setTimeout(() => setShareMsg(''), 2500);
   };
 
+  const lesson = LESSONS[lessonIdx]!;
+
   return (
     <div className="play">
       <header className="play-top">
         <div className="play-brand">
           <span className="shell-mark" aria-hidden>✚</span>
-          <div>
-            <strong>Applet playground</strong>
-            <span className="play-sub">edit · compile in-browser · run in the sandbox</span>
+          <strong>Playground</strong>
+          <div className="play-modes">
+            <button className={mode === 'learn' ? 'active' : ''} onClick={() => setMode('learn')}>Learn</button>
+            <button className={mode === 'examples' ? 'active' : ''} onClick={() => setMode('examples')}>Examples</button>
           </div>
         </div>
         <div className="play-actions">
           {sha ? <span className="play-tag">sha256:{sha.slice(0, 10)}</span> : null}
           {packages.length ? <span className="play-tag">npm: {packages.join(', ')}</span> : null}
-          <button className="play-btn ghost" onClick={() => setShowRef(true)}>API reference</button>
+          <button className="play-btn ghost" onClick={() => setShowRef(true)}>API</button>
           <button className="play-btn ghost" onClick={share}>{shareMsg || 'Share'}</button>
-          <button className="play-btn primary" onClick={run} disabled={busy}>
+          <button className="play-btn primary" onClick={() => run()} disabled={busy}>
             {busy ? 'Compiling…' : '▶ Run'} <kbd>⌘↵</kbd>
           </button>
         </div>
       </header>
 
       <div className="play-body">
-        <aside className="play-examples">
-          <div className="play-examples-head">Examples</div>
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex.id}
-              className={`play-example${currentExample === ex.id ? ' active' : ''}`}
-              onClick={() => loadExample(ex)}
-            >
-              <span className="play-example-name">{ex.name}</span>
-              <span className="play-example-blurb">{ex.blurb}</span>
-            </button>
-          ))}
+        <aside className="play-side">
+          {mode === 'learn'
+            ? LESSONS.map((l, i) => (
+                <button
+                  key={l.id}
+                  className={`play-side-item${i === lessonIdx ? ' active' : ''}`}
+                  onClick={() => loadLesson(i)}
+                >
+                  <span className="play-side-n">{i + 1}</span>
+                  <span className="play-side-name">{l.title}</span>
+                </button>
+              ))
+            : EXAMPLES.map((ex) => (
+                <button
+                  key={ex.id}
+                  className={`play-side-item${exampleId === ex.id ? ' active' : ''}`}
+                  onClick={() => loadExample(ex)}
+                >
+                  <span className="play-side-name">{ex.name}</span>
+                  <span className="play-side-blurb">{ex.blurb}</span>
+                </button>
+              ))}
         </aside>
 
         <section className="play-editor">
+          {mode === 'learn' ? (
+            <div className="play-lesson">
+              <div className="play-lesson-head">
+                <span className="play-lesson-step">Lesson {lessonIdx + 1} of {LESSONS.length}</span>
+                <div className="play-lesson-nav">
+                  <button disabled={lessonIdx === 0} onClick={() => loadLesson(lessonIdx - 1)}>‹ Prev</button>
+                  <button disabled={lessonIdx === LESSONS.length - 1} onClick={() => loadLesson(lessonIdx + 1)}>Next ›</button>
+                </div>
+              </div>
+              <h2>{lesson.title}</h2>
+              <p>{lesson.prose}</p>
+              <span className="play-lesson-hint">Edit the code below and press ⌘↵ to re-run.</span>
+            </div>
+          ) : null}
+
           <div className="play-tabs">
             {files.map((file, i) => (
-              <button
-                key={file.path}
-                className={`play-tab${i === active ? ' active' : ''}`}
-                onClick={() => setActive(i)}
-              >
+              <button key={file.path} className={`play-tab${i === active ? ' active' : ''}`} onClick={() => setActive(i)}>
                 {file.path}
               </button>
             ))}
           </div>
-          <textarea
-            className="play-textarea"
-            spellCheck={false}
-            value={files[active]?.content ?? ''}
-            onChange={(e) => updateActive(e.target.value)}
-            onKeyDown={onEditorKey}
-          />
+          <div className="play-editor-wrap">
+            <CodeEditor value={files[active]?.content ?? ''} onChange={updateActive} onKeyDown={onEditorKey} />
+          </div>
           {diagnostics.length > 0 ? (
             <ul className="play-diagnostics">
-              {diagnostics.map((message, i) => (
-                <li key={i}>{message}</li>
+              {diagnostics.map((m, i) => (
+                <li key={i}>{m}</li>
               ))}
             </ul>
           ) : null}
@@ -199,9 +219,9 @@ export function Authoring() {
 
         <section className="play-preview">
           {compiled ? (
-            <App key={runKey} appletSourceOverride={compiled} />
+            <App key={runKey} appletSourceOverride={compiled} config={PREVIEW_CHROME} />
           ) : (
-            <div className="play-placeholder">{busy ? 'Compiling…' : 'Press Run to build and run.'}</div>
+            <div className="play-placeholder">{busy ? 'Compiling…' : 'Press Run.'}</div>
           )}
         </section>
       </div>

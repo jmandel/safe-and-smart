@@ -19,3 +19,13 @@ interface ImportMeta {
 
 // CSS is bundled by Bun from these side-effect imports.
 declare module '*.css';
+
+// Prism (syntax highlighting in the playground editor). Minimal surface we use.
+declare module 'prismjs' {
+  const Prism: {
+    highlight(code: string, grammar: unknown, language: string): string;
+    languages: Record<string, unknown>;
+  };
+  export default Prism;
+}
+declare module 'prismjs/components/*';

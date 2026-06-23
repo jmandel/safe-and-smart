@@ -112,24 +112,65 @@ export interface ClinicalContext {
   applet: {id: string; version: string};
 }
 
-/**
- * This is intentionally broad. It approximates possession of the current
- * clinician's SMART FHIR client without revealing its bearer token.
- */
-export interface ClinicalCapabilityApi {
-  fhirRequest(request: FhirRequest): Promise<unknown>;
-  llmComplete(request: LlmRequest): Promise<LlmResponse>;
-  // Streaming completion: the broker pushes text deltas through onToken (a proxied
-  // callback over the MessagePort) as they are produced, optionally invoking
-  // allowlisted tools first. Resolves with usage + the tool calls it made.
-  llmStream(request: LlmRequest, onToken: (delta: string) => void): Promise<LlmStreamResult>;
+// ─────────────────────────────────────────────────────────────────────────────
+// The applet capability surface. The trusted wrapper builds this object from its
+// handler registry and returns it over the handshake; the applet calls it as
+// `session.smart.search(...)`, `session.ai.stream(...)`, etc. There is no separate
+// "context" object or flat capability bag — the wire shape IS the API shape (the
+// threads serializer proxies nested functions and clones nested data). Each
+// namespace below corresponds to exactly one registered host handler.
+
+export interface FhirRequestInit {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  headers?: Record<string, string>;
+  body?: unknown;
+}
+
+/** SMART-on-FHIR: launch context (data) + scoped FHIR access (methods). Mirrors a
+ *  fhirclient client — `smart.patient` and `smart.request()` on one object. */
+export interface SmartApi {
+  readonly patient: {id: string; display: string};
+  readonly user: {id: string; display: string; practitioner?: string};
+  readonly encounter?: {id: string};
+  readonly scopes: readonly string[];
+  readonly fhirBaseUrl: string;
+  /** GET a search, e.g. search('Observation', {patient, code}). */
+  search(type: string, params?: Record<string, string | number | undefined>): Promise<unknown>;
+  /** GET a single resource by id. */
+  read(type: string, id: string): Promise<unknown>;
+  /** Escape hatch: a relative FHIR URL + init (token attached host-side). */
+  request(url: string, init?: FhirRequestInit): Promise<unknown>;
+}
+
+/** The model. Also reachable as fetch('https://llm.internal/v1/…') (OpenAI shape). */
+export interface AiApi {
+  complete(request: LlmRequest): Promise<LlmResponse>;
+  stream(request: LlmRequest, onToken: (delta: string) => void): Promise<LlmStreamResult>;
+}
+
+/** Presentation: install a validated, ShadowRoot-scoped stylesheet. */
+export interface StylesApi {
+  add(css: string): Promise<StylesheetResult>;
+}
+
+/** Documents: open a token-protected attachment → opaque handle for <Image>. */
+export interface FilesApi {
+  open(ref: AttachmentRequest): Promise<AttachmentResult>;
+}
+
+/** What the trusted host builds + returns over the handshake (the registry). */
+export interface HostCapabilities {
+  smart: SmartApi;
+  ai: AiApi;
+  styles: StylesApi;
+  files: FilesApi;
   audit(event: AppletAudit): Promise<void>;
-  // Register a validated, scoped stylesheet for this applet's surface. Resolves
-  // {ok:false,error} if the CSS is rejected (url/scheme/@import/escape-hatch).
-  registerStylesheet(input: Stylesheet): Promise<StylesheetResult>;
-  // Fetch a (token-protected) attachment host-side and return an OPAQUE handle to
-  // render via <ui-image>. The applet never receives the URL or the token.
-  fetchAttachment(input: AttachmentRequest): Promise<AttachmentResult>;
+}
+
+/** What the applet author sees: host capabilities + the worker-side isolation
+ *  probe (added applet-side, since the worker measures its own sandbox). */
+export interface Session extends HostCapabilities {
+  probe: SecurityProbeResult;
 }
 
 export const AttachmentRequestSchema = z.object({
@@ -150,8 +191,9 @@ export interface AttachmentResult {
 export interface HostHandshake {
   protocolVersion: typeof PROTOCOL_VERSION;
   remoteConnection: RemoteConnection;
-  clinical: ClinicalCapabilityApi;
-  context: ClinicalContext;
+  // The capability surface, namespaced to match the applet's `session.*`. The
+  // applet runtime attaches `probe` to form the full Session.
+  capabilities: HostCapabilities;
 }
 
 export interface HostThreadExports {

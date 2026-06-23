@@ -27,11 +27,11 @@ const DIAGRAM = `
   </g>
 </svg>`;
 
-function CareplanDiagram({context}: AppletProps) {
+function CareplanDiagram({session}: AppletProps) {
   return (
     <Stack gap={12}>
       <Heading level={2}>Care pathway</Heading>
-      <Text tone="muted">Patient: {context.patient.display} — rendered from validated author SVG.</Text>
+      <Text tone="muted">Patient: {session.smart.patient.display} — rendered from validated author SVG.</Text>
       <Svg markup={DIAGRAM} ariaLabel="Care pathway: intake, review, plan" />
     </Stack>
   );

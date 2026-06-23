@@ -7,7 +7,7 @@ import {useState} from 'react';
 import {runApplet, type AppletProps} from '../runtime';
 import {Stack, Heading, Text, Button, Card, Badge} from '../remote-elements';
 
-function NoteSummarizer({context}: AppletProps) {
+function NoteSummarizer({session}: AppletProps) {
   const [summary, setSummary] = useState('');
   const [busy, setBusy] = useState(false);
   const [tokens, setTokens] = useState(0);
@@ -22,7 +22,7 @@ function NoteSummarizer({context}: AppletProps) {
         body: JSON.stringify({
           model: 'note-summarizer',
           stream: true,
-          messages: [{role: 'user', content: `Summarize recent notes for ${context.patient.display}`}],
+          messages: [{role: 'user', content: `Summarize recent notes for ${session.smart.patient.display}`}],
         }),
       });
       const reader = response.body?.getReader();
@@ -59,7 +59,7 @@ function NoteSummarizer({context}: AppletProps) {
     <Stack gap={12}>
       <Stack gap={4}>
         <Heading level={2}>Note summarizer (streaming)</Heading>
-        <Text tone="muted">Patient: {context.patient.display}</Text>
+        <Text tone="muted">Patient: {session.smart.patient.display}</Text>
       </Stack>
       <Stack gap={8} direction="row" align="center">
         <Button variant="primary" disabled={busy} onPress={run}>

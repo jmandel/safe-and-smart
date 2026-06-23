@@ -10,7 +10,7 @@ interface Bundle {
   entry?: Array<{resource?: {valueQuantity?: {value?: number; unit?: string}; effectiveDateTime?: string}}>;
 }
 
-function FhirBridgeDemo({context}: AppletProps) {
+function FhirBridgeDemo({session}: AppletProps) {
   const [status, setStatus] = useState('loading…');
   const [rows, setRows] = useState<Array<{when: string; value: string}>>([]);
 
@@ -19,7 +19,7 @@ function FhirBridgeDemo({context}: AppletProps) {
       try {
         // Familiar fetch ergonomics — routed through the broker, not the network.
         const response = await fetch(
-          `https://fhir.internal/Observation?patient=${context.patient.id}&code=http://loinc.org|29463-7&_count=5`,
+          `https://fhir.internal/Observation?patient=${session.smart.patient.id}&code=http://loinc.org|29463-7&_count=5`,
         );
         if (!response.ok) throw new Error(`FHIR responded ${response.status}`);
         const bundle = (await response.json()) as Bundle;
@@ -37,14 +37,14 @@ function FhirBridgeDemo({context}: AppletProps) {
         setStatus(`bridge error: ${(error as Error).message}`);
       }
     })();
-  }, [context.patient.id]);
+  }, [session.smart.patient.id]);
 
   return (
     <ui-stack gap={12}>
       <ui-card padding={20}>
         <ui-stack gap={8}>
           <ui-heading level={2}>FHIR fetch bridge</ui-heading>
-          <ui-text tone="muted">Patient: {context.patient.display}</ui-text>
+          <ui-text tone="muted">Patient: {session.smart.patient.display}</ui-text>
           <ui-badge tone={rows.length ? 'positive' : 'neutral'}>{status}</ui-badge>
         </ui-stack>
       </ui-card>

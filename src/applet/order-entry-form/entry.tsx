@@ -5,7 +5,7 @@ import {useState} from 'react';
 import {runApplet, type AppletProps} from '../runtime';
 import {Stack, Heading, Text, Input, Textarea, Button, Alert} from '../remote-elements';
 
-function OrderEntry({clinical, context}: AppletProps) {
+function OrderEntry({session}: AppletProps) {
   const [med, setMed] = useState('');
   const [dose, setDose] = useState('');
   const [notes, setNotes] = useState('');
@@ -18,7 +18,7 @@ function OrderEntry({clinical, context}: AppletProps) {
   const submit = () => {
     if (!valid) return;
     setSubmitted(true);
-    void clinical.audit({
+    void session.audit({
       kind: 'application',
       code: 'applet.user-action',
       message: `order-entry: ${med.trim()} ${dose.trim()}`,
@@ -29,7 +29,7 @@ function OrderEntry({clinical, context}: AppletProps) {
     <Stack gap={14}>
       <Stack gap={4}>
         <Heading level={2}>New order</Heading>
-        <Text tone="muted">Patient: {context.patient.display} — Tab between fields, Enter to submit.</Text>
+        <Text tone="muted">Patient: {session.smart.patient.display} — Tab between fields, Enter to submit.</Text>
       </Stack>
       <Input
         label="Medication"

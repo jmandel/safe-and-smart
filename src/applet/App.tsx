@@ -1,9 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import type {
-  ClinicalCapabilityApi,
-  ClinicalContext,
-  SecurityProbeResult,
-} from '../shared/protocol';
+import type {AppletProps} from './runtime';
 import type {FhirBundle, Observation, Patient} from '../shared/fhir';
 import {
   Alert,
@@ -30,18 +26,12 @@ import {
 } from './growth-model';
 import {useGrowthView} from './growth-store';
 
-interface AppProps {
-  clinical: ClinicalCapabilityApi;
-  context: ClinicalContext;
-  securityProbe: SecurityProbeResult;
-}
-
 type LoadState =
   | {status: 'loading'}
   | {status: 'error'; message: string}
   | {status: 'ready'; patient: Patient; observations: Observation[]};
 
-export function App({clinical, context, securityProbe}: AppProps) {
+export function App({session}: AppletProps) {
   const [loadState, setLoadState] = useState<LoadState>({status: 'loading'});
   const [summary, setSummary] = useState<string>();
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -57,7 +47,7 @@ export function App({clinical, context, securityProbe}: AppProps) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!context.patient.id) {
+    if (!session.smart.patient.id) {
       setLoadState({
         status: 'error',
         message: 'No patient is in context. Relaunch via SMART and select a patient.',
@@ -65,9 +55,11 @@ export function App({clinical, context, securityProbe}: AppProps) {
       return;
     }
     void Promise.all([
-      clinical.fhirRequest({url: `Patient/${context.patient.id}`}),
-      clinical.fhirRequest({
-        url: `Observation?patient=${encodeURIComponent(context.patient.id)}&category=vital-signs&_count=500`,
+      session.smart.read('Patient', session.smart.patient.id),
+      session.smart.search('Observation', {
+        patient: session.smart.patient.id,
+        category: 'vital-signs',
+        _count: 500,
       }),
     ])
       .then(([patientResult, observationResult]) => {
@@ -94,7 +86,7 @@ export function App({clinical, context, securityProbe}: AppProps) {
     return () => {
       cancelled = true;
     };
-  }, [clinical, context.patient.id]);
+  }, [session.smart.patient.id]);
 
   useEffect(() => {
     if (!animating) return;
@@ -129,7 +121,7 @@ export function App({clinical, context, securityProbe}: AppProps) {
     ]
       .filter(Boolean)
       .join(' ')) ||
-    context.patient.display;
+    session.smart.patient.display;
   const birthDate = loadState.patient.birthDate ?? '2010-04-10';
   const measurements = extractMeasurements(loadState.observations, metric, birthDate);
   const latest = measurements.at(-1);
@@ -163,7 +155,7 @@ export function App({clinical, context, securityProbe}: AppProps) {
         value: point.value,
         unit: point.unit,
       }));
-      const response = await clinical.llmComplete({
+      const response = await session.ai.complete({
         profile: 'baa-clinical-summary-demo',
         messages: [
           {
@@ -186,9 +178,9 @@ export function App({clinical, context, securityProbe}: AppProps) {
   }
 
   const allSecurityChecksPassed =
-    securityProbe.directDomUnavailable &&
-    securityProbe.directNetworkBlocked &&
-    securityProbe.persistentStorageBlocked;
+    session.probe.directDomUnavailable &&
+    session.probe.directNetworkBlocked &&
+    session.probe.persistentStorageBlocked;
 
   return (
     <Stack gap={16}>
@@ -302,9 +294,9 @@ export function App({clinical, context, securityProbe}: AppProps) {
         <Card padding={18}>
           <Stack gap={10}>
             <Heading level={2}>Isolation probes</Heading>
-            <ProbeRow label="Direct DOM" passed={securityProbe.directDomUnavailable} />
-            <ProbeRow label="Direct network" passed={securityProbe.directNetworkBlocked} />
-            <ProbeRow label="Persistent storage" passed={securityProbe.persistentStorageBlocked} />
+            <ProbeRow label="Direct DOM" passed={session.probe.directDomUnavailable} />
+            <ProbeRow label="Direct network" passed={session.probe.directNetworkBlocked} />
+            <ProbeRow label="Persistent storage" passed={session.probe.persistentStorageBlocked} />
             <Text tone="muted" size="small">
               FHIR still succeeds because the trusted outer shell performs the authorized request over MessagePort RPC.
             </Text>

@@ -14,13 +14,13 @@ import styles from './app.css';
 import { VitalTile } from './VitalTile';
 
 // React hooks + ui + runApplet are provided by the sandbox SDK (no import needed).
-function App({ context, clinical }) {
-  useEffect(() => { clinical.registerStylesheet({ css: styles }); }, []);
+function App({ session }) {
+  useEffect(() => { session.styles.add(styles); }, []);
   const today = format(new Date(), 'EEEE, MMMM d');
   return (
     <ui.Stack gap={16}>
       <ui.Heading level={2}>Multi-file applet</ui.Heading>
-      <ui.Text tone="muted">Patient: {context.patient.display} · {today}</ui.Text>
+      <ui.Text tone="muted">Patient: {session.smart.patient.display} · {today}</ui.Text>
       <ui.Box className="row">
         <VitalTile label="Heart rate" value="72 bpm" />
         <VitalTile label="Blood pressure" value="118/76" />

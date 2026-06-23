@@ -98,8 +98,7 @@ export function App({
                 broker.recordHostEvent(`mutation.${code}`, detail, 'denied');
               },
             }),
-            clinical: broker.capabilityApi(),
-            context: broker.context,
+            capabilities: broker.buildSession(),
           };
         },
       },

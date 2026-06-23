@@ -13,13 +13,13 @@ const PRIORITIES = [
   {label: 'Stat', value: 'stat'},
 ];
 
-function IntrinsicDemo({clinical, context, securityProbe}: AppletProps) {
+function IntrinsicDemo({session}: AppletProps) {
   const [priority, setPriority] = useState('routine');
   const [filed, setFiled] = useState(false);
 
   const file = () => {
     setFiled(true);
-    void clinical.audit({
+    void session.audit({
       kind: 'application',
       code: 'applet.user-action',
       message: `intrinsic-demo: filed ${priority} follow-up note`,
@@ -32,10 +32,10 @@ function IntrinsicDemo({clinical, context, securityProbe}: AppletProps) {
         <ui-stack gap={8}>
           <ui-heading level={2}>Quick follow-up</ui-heading>
           <ui-text tone="muted">
-            Patient: {context.patient.display} · written with intrinsic {'<ui-*>'} JSX, no Remote DOM imports.
+            Patient: {session.smart.patient.display} · written with intrinsic {'<ui-*>'} JSX, no Remote DOM imports.
           </ui-text>
-          <ui-badge tone={securityProbe.directNetworkBlocked ? 'positive' : 'critical'}>
-            network {securityProbe.directNetworkBlocked ? 'blocked' : 'OPEN'}
+          <ui-badge tone={session.probe.directNetworkBlocked ? 'positive' : 'critical'}>
+            network {session.probe.directNetworkBlocked ? 'blocked' : 'OPEN'}
           </ui-badge>
         </ui-stack>
       </ui-card>

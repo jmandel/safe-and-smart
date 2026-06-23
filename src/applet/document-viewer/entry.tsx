@@ -6,15 +6,15 @@ import {useEffect, useState} from 'react';
 import {runApplet, type AppletProps} from '../runtime';
 import {Stack, Heading, Text, Image, Alert} from '../remote-elements';
 
-function DocumentViewer({clinical}: AppletProps) {
+function DocumentViewer({session}: AppletProps) {
   const [handle, setHandle] = useState<string>();
   const [error, setError] = useState<string>();
 
   useEffect(() => {
-    clinical
-      .fetchAttachment({url: 'demo:discharge-summary', title: 'Discharge summary'})
+    session.files
+      .open({url: 'demo:discharge-summary', title: 'Discharge summary'})
       .then((r) => (r.ok ? setHandle(r.handle) : setError(r.error)));
-  }, [clinical]);
+  }, [session]);
 
   return (
     <Stack gap={12}>

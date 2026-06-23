@@ -60,19 +60,19 @@ function chartSpec(readings: Reading[]) {
   };
 }
 
-function EncounterCockpit({context, clinical}: AppletProps) {
+function EncounterCockpit({session}: AppletProps) {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [summary, setSummary] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [docHandle, setDocHandle] = useState<string>();
 
   useEffect(() => {
-    void clinical.registerStylesheet({css: STYLES});
+    void session.styles.add(STYLES);
     // FHIR via the fetch bridge — no token in the applet.
     (async () => {
       try {
         const res = await fetch(
-          `https://fhir.internal/Observation?patient=${context.patient.id}&code=http://loinc.org|29463-7&_count=12&_sort=date`,
+          `https://fhir.internal/Observation?patient=${session.smart.patient.id}&code=http://loinc.org|29463-7&_count=12&_sort=date`,
         );
         const bundle = await res.json();
         const rows: Reading[] = (bundle.entry ?? [])
@@ -84,10 +84,10 @@ function EncounterCockpit({context, clinical}: AppletProps) {
         /* leave empty */
       }
     })();
-    clinical.fetchAttachment({url: 'demo:encounter-note', title: 'Encounter note'}).then((r) => {
+    session.files.open({url: 'demo:encounter-note', title: 'Encounter note'}).then((r) => {
       if (r.ok) setDocHandle(r.handle);
     });
-  }, [clinical, context.patient.id]);
+  }, [session.smart.patient.id]);
 
   const summarize = async () => {
     setStreaming(true);
@@ -98,7 +98,7 @@ function EncounterCockpit({context, clinical}: AppletProps) {
         body: JSON.stringify({
           model: 'note-summarizer',
           stream: true,
-          messages: [{role: 'user', content: `Summarize the encounter for ${context.patient.display}`}],
+          messages: [{role: 'user', content: `Summarize the encounter for ${session.smart.patient.display}`}],
         }),
       });
       const reader = res.body?.getReader();
@@ -133,7 +133,7 @@ function EncounterCockpit({context, clinical}: AppletProps) {
     <Stack gap={14}>
       <Box className="cockpit-head">
         <Heading level={2}>Encounter cockpit</Heading>
-        <Text tone="muted">{context.patient.display}</Text>
+        <Text tone="muted">{session.smart.patient.display}</Text>
         <Box className="cockpit-meta">
           <Inline className="live">
             <Inline className="dot" /> Live

@@ -42,21 +42,22 @@ const RESPONSE_SCHEMA = {
   },
 };
 
-export function App({clinical, context, securityProbe}: AppletProps) {
+export function App({session}: AppletProps) {
   const [phase, setPhase] = useState<Phase>({status: 'loading'});
   const [resolved, setResolved] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
-    if (!context.patient.id) {
+    if (!session.smart.patient.id) {
       setPhase({status: 'error', message: 'No patient is in context. Relaunch via SMART and select a patient.'});
       return;
     }
     void (async () => {
       try {
         // 1. Gather inputs: the live structured med list + (here synthetic) notes.
-        const bundle = (await clinical.fhirRequest({
-          url: `MedicationRequest?patient=${encodeURIComponent(context.patient.id)}&_count=100`,
+        const bundle = (await session.smart.search('MedicationRequest', {
+          patient: session.smart.patient.id,
+          _count: 100,
         })) as FhirBundle<MedicationRequest>;
         const medList = (bundle.entry ?? []).map((entry) => ({
           display:
@@ -116,12 +117,12 @@ export function App({clinical, context, securityProbe}: AppletProps) {
     return () => {
       cancelled = true;
     };
-  }, [clinical, context.patient.id]);
+  }, [session.smart.patient.id]);
 
   const contained =
-    securityProbe.directDomUnavailable &&
-    securityProbe.directNetworkBlocked &&
-    securityProbe.persistentStorageBlocked;
+    session.probe.directDomUnavailable &&
+    session.probe.directNetworkBlocked &&
+    session.probe.persistentStorageBlocked;
 
   if (phase.status === 'loading') {
     return (
@@ -198,7 +199,7 @@ export function App({clinical, context, securityProbe}: AppletProps) {
                         disabled={Boolean(resolved[d.medication])}
                         onPress={() => {
                           setResolved((r) => ({...r, [d.medication]: 'accepted'}));
-                          void clinical.audit({
+                          void session.audit({
                             kind: 'application',
                             code: 'applet.review-accepted',
                             message: `med-recon: accepted proposed action for ${d.medication}`,
@@ -212,7 +213,7 @@ export function App({clinical, context, securityProbe}: AppletProps) {
                         disabled={Boolean(resolved[d.medication])}
                         onPress={() => {
                           setResolved((r) => ({...r, [d.medication]: 'dismissed'}));
-                          void clinical.audit({
+                          void session.audit({
                             kind: 'application',
                             code: 'applet.review-dismissed',
                             message: `med-recon: dismissed discrepancy for ${d.medication}`,

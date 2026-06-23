@@ -22,18 +22,14 @@ import {ThreadMessagePort} from '@quilted/threads';
 import {
   PROTOCOL_VERSION,
   type AppletThreadExports,
-  type ClinicalCapabilityApi,
-  type ClinicalContext,
   type HostThreadExports,
-  type SecurityProbeResult,
+  type Session,
 } from '../shared/protocol';
 import {RootElement} from './remote-elements';
 import {runSecurityProbe} from './security-probe';
 
 export interface AppletProps {
-  clinical: ClinicalCapabilityApi;
-  context: ClinicalContext;
-  securityProbe: SecurityProbeResult;
+  session: Session;
 }
 
 export interface AppletManifest {
@@ -86,20 +82,22 @@ async function start(
     throw new Error(`Unsupported protocol version ${handshake.protocolVersion}.`);
   }
 
-  const securityProbe = await runSecurityProbe(probeUrl);
-  // Install the capability fetch bridges AFTER the probe (so the probe still
-  // measures real native-fetch isolation). These give applets clean, familiar
+  const probe = await runSecurityProbe(probeUrl);
+  // The handshake already speaks `session.*` (the host built it from its handler
+  // registry). The applet runtime just attaches the worker-side isolation probe.
+  const session: Session = {...handshake.capabilities, probe};
+
+  // Install the capability fetch facades AFTER the probe (so the probe still
+  // measures real native-fetch isolation). They give applets clean, familiar
   // ergonomics — `fetch('https://llm.internal/v1/chat/completions', …)` (or the
   // real `openai` client at that baseURL) and `fetch('https://fhir.internal/<rel>')`
-  // — while every call is actually routed over the MessagePort to the wrapper's
-  // brokered llmComplete / fhirRequest. No API key, no token, and no real network
-  // ever exist in the applet.
-  installCapabilityBridges(handshake.clinical);
-  await handshake.clinical.audit({
+  // — by routing into the SAME session handlers. No key, no token, no real network.
+  installCapabilityBridges(session);
+  await session.audit({
     kind: 'security-probe',
     code: 'applet.security-probe',
-    message: `DOM=${securityProbe.directDomUnavailable}; network=${securityProbe.directNetworkBlocked}; storage=${securityProbe.persistentStorageBlocked}`,
-    detail: securityProbe.details,
+    message: `DOM=${probe.directDomUnavailable}; network=${probe.directNetworkBlocked}; storage=${probe.persistentStorageBlocked}`,
+    detail: probe.details,
   });
 
   const rootElement = document.createElement('remote-root') as InstanceType<typeof RootElement>;
@@ -107,13 +105,7 @@ async function start(
   document.body.append(rootElement);
 
   reactRoot = createRoot(rootElement);
-  reactRoot.render(
-    <App
-      clinical={handshake.clinical}
-      context={handshake.context}
-      securityProbe={securityProbe}
-    />,
-  );
+  reactRoot.render(<App session={session} />);
 }
 
 // Sentinel bases the applet's HTTP-style calls target. Neither is a real host;
@@ -126,15 +118,15 @@ const FHIR_BASE = 'https://fhir.internal/';
 
 let bridgeInstalled = false;
 
-function installCapabilityBridges(clinical: ClinicalCapabilityApi) {
+function installCapabilityBridges(session: Session) {
   if (bridgeInstalled) return;
   bridgeInstalled = true;
   const realFetch = typeof self.fetch === 'function' ? self.fetch.bind(self) : undefined;
 
   self.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-    if (url.startsWith(LLM_BASE)) return bridgeChatCompletion(clinical, init, input);
-    if (url.startsWith(FHIR_BASE)) return bridgeFhirRequest(clinical, url, init, input);
+    if (url.startsWith(LLM_BASE)) return bridgeChatCompletion(session, init, input);
+    if (url.startsWith(FHIR_BASE)) return bridgeFhirRequest(session, url, init, input);
     // Everything else stays unavailable — the applet has no ambient network.
     // (Native fetch is already CSP-blocked; we surface a clear error.)
     if (realFetch) return realFetch(input as RequestInfo, init);
@@ -147,7 +139,7 @@ function installCapabilityBridges(clinical: ClinicalCapabilityApi) {
 // attaches the SMART token, validates/relativizes the URL, and enforces budgets;
 // the applet never sees the credential or the absolute server URL.
 async function bridgeFhirRequest(
-  clinical: ClinicalCapabilityApi,
+  session: Session,
   url: string,
   init: RequestInit | undefined,
   input: RequestInfo | URL,
@@ -171,9 +163,10 @@ async function bridgeFhirRequest(
         : '';
 
   try {
-    const resource = await clinical.fhirRequest({
-      url: relative,
-      init: {method, headers, body: rawBody ? rawBody : undefined},
+    const resource = await session.smart.request(relative, {
+      method,
+      headers,
+      body: rawBody ? rawBody : undefined,
     });
     return new Response(JSON.stringify(resource), {
       status: 200,
@@ -198,7 +191,7 @@ async function bridgeFhirRequest(
 // for JSON (response_format), the message content is the JSON-encoded structured
 // result — exactly the contract OpenAI's JSON mode uses.
 async function bridgeChatCompletion(
-  clinical: ClinicalCapabilityApi,
+  session: Session,
   init: RequestInit | undefined,
   input: RequestInfo | URL,
 ): Promise<Response> {
@@ -237,7 +230,7 @@ async function bridgeChatCompletion(
             }),
           );
         try {
-          await clinical.llmStream({profile: body.model ?? 'default', messages}, onToken);
+          await session.ai.stream({profile: body.model ?? 'default', messages}, onToken);
           controller.enqueue(sse({choices: [{index: 0, delta: {}, finish_reason: 'stop'}]}));
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();
@@ -252,7 +245,7 @@ async function bridgeChatCompletion(
   const wantsJson =
     body.response_format?.type === 'json_object' || body.response_format?.type === 'json_schema';
 
-  const result = await clinical.llmComplete({
+  const result = await session.ai.complete({
     profile: body.model ?? 'default', // in the brokered world, "model" == approved profile
     messages,
     responseSchema: wantsJson ? body.response_format?.json_schema?.schema ?? {} : undefined,

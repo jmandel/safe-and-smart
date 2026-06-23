@@ -35,16 +35,16 @@ const TILES = [
   {label: 'Temp', value: '38.4', unit: 'C', warn: true},
 ];
 
-function StyledVitals({context, clinical}: AppletProps) {
+function StyledVitals({session}: AppletProps) {
   const [styled, setStyled] = useState(false);
   useEffect(() => {
-    clinical.registerStylesheet({css: STYLES}).then((r) => setStyled(r.ok));
-  }, [clinical]);
+    session.styles.add(STYLES).then((r) => setStyled(r.ok));
+  }, [session]);
 
   return (
     <Stack gap={16}>
       <Stack gap={4}>
-        <Heading level={2}>Vitals — {context.patient.display}</Heading>
+        <Heading level={2}>Vitals — {session.smart.patient.display}</Heading>
         <Inline className="live">
           <Inline className="dot" /> {styled ? 'live · CSS installed' : 'installing styles…'}
         </Inline>

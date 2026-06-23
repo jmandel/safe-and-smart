@@ -1,4 +1,4 @@
-name: Verify (typecheck, unit tests, red-team)
+name: Verify (typecheck, unit, red-team, smoke)
 
 # The security gate. Reproduces the unit + browser hostile-applet checks on every
 # push/PR so the security claims (docs/SECURITY_CLAIMS_AND_ASSUMPTIONS.md) stay
@@ -27,22 +27,19 @@ jobs:
 
       - name: Build (dev two-origin variant for the harness)
         env:
-          VITE_SANDBOX_ORIGIN: http://127.0.0.1:4274
+          VITE_SANDBOX_ORIGIN: http://127.0.0.1:4174
         run: bun run build.ts
 
       - name: Install Chromium for the red-team harness
         run: bunx playwright install --with-deps chromium
 
-      - name: Serve dist (wrapper :4273 + sandbox :4274)
-        env:
-          HOST_PORT: '4273'
-          SANDBOX_PORT: '4274'
+      - name: Serve dist (wrapper :4173 + sandbox :4174, the serve.mjs defaults)
         run: node tools/serve.mjs &
 
       - name: Wait for the server
         run: |
           for i in $(seq 1 30); do
-            curl -sf http://localhost:4273/run/ >/dev/null && break
+            curl -sf http://localhost:4173/run/ >/dev/null && break
             sleep 1
           done
 

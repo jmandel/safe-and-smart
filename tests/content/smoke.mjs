@@ -15,7 +15,7 @@ import {createRequire} from 'node:module';
 const require = createRequire(import.meta.url);
 const {chromium} = require('playwright-core'); // declared in devDependencies
 
-const WRAPPER = process.env.WRAPPER ?? 'http://localhost:4273';
+const WRAPPER = process.env.WRAPPER ?? 'http://localhost:4173'; // matches serve.mjs default
 const LOCAL_CHROME = '/home/jmandel/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 const CHROME = process.env.REDTEAM_CHROMIUM ?? (existsSync(LOCAL_CHROME) ? LOCAL_CHROME : undefined);
 const ERROR_TITLE = 'This applet hit an error';

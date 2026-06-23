@@ -8,7 +8,7 @@ import {createRequire} from 'node:module';
 const require = createRequire(import.meta.url);
 const {chromium} = require('playwright-core'); // declared in devDependencies
 
-const WRAPPER = process.env.WRAPPER ?? 'http://localhost:4273';
+const WRAPPER = process.env.WRAPPER ?? 'http://localhost:4173'; // matches serve.mjs default
 // Use an explicit chromium path if provided/known; otherwise let Playwright use
 // its own installed browser (CI: `playwright install chromium`).
 const LOCAL_CHROME = '/home/jmandel/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';

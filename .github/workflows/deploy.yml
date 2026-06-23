@@ -4,8 +4,14 @@ name: Deploy demo to GitHub Pages
 # Pages comes from the opaque sandbox iframe + the <meta> CSP in sandbox.html
 # (Pages cannot set response headers); see docs/DEPLOYMENT.md.
 
+# Gated on Verify: runs only after the "Verify" workflow succeeds on main
+# (typecheck + unit tests + red-team + content smoke), so nothing ships unless the
+# security + content gates pass for that exact commit. workflow_dispatch still
+# allows a manual deploy.
 on:
-  push:
+  workflow_run:
+    workflows: ["Verify (typecheck, unit, red-team, smoke)"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -20,6 +26,8 @@ concurrency:
 
 jobs:
   build:
+    # Deploy only when Verify passed (or on a manual dispatch).
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

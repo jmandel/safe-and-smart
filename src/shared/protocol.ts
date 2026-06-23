@@ -74,13 +74,17 @@ export const APPLET_AUDIT_CODES = [
 ] as const;
 
 export const AppletAuditSchema = z.object({
-  kind: z.enum(['lifecycle', 'security-probe', 'application']),
+  // `kind` classifies the event; it defaults to 'application' so the common case
+  // — `session.audit({message})` as shown in the docs/tutorial — validates instead
+  // of being silently rejected. lifecycle/security-probe are set by the runtime.
+  kind: z.enum(['lifecycle', 'security-probe', 'application']).default('application'),
   code: z.enum(APPLET_AUDIT_CODES).optional(),
   message: z.string().min(1).max(2_000),
   detail: z.record(z.string(), z.unknown()).optional(),
 });
 
-export type AppletAudit = z.infer<typeof AppletAuditSchema>;
+// The applet-facing type is the INPUT shape (kind optional, defaulted on parse).
+export type AppletAudit = z.input<typeof AppletAuditSchema>;
 
 // An applet-supplied stylesheet (CSS Modules / hand-written CSS). The host
 // validates it (no url()/scheme/@import/escape-hatch) and installs it, scoped, into

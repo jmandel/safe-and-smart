@@ -39,6 +39,7 @@ export function App({
   smartInit,
   appletSourceOverride,
   config,
+  onReady,
 }: {
   smartInit?: import('./smart-launch').SmartInit;
   // In-memory applet source (e.g. compiled in the browser authoring page). When
@@ -46,6 +47,10 @@ export function App({
   // of being fetched from a URL.
   appletSourceOverride?: string;
   config?: WrapperConfig;
+  // Fired once when the applet is connected AND has produced its first render
+  // (or a short fallback elapses for an applet that renders nothing initially).
+  // Lets an embedder double-buffer: boot a new App hidden, swap when it's ready.
+  onReady?: () => void;
 } = {}) {
   const chrome = {...FULL_CHROME, ...config};
   const receiver = useMemo(() => new RemoteReceiver({retain, release}), []);
@@ -64,6 +69,27 @@ export function App({
     setMutations(0);
     broker.setStyleSink((css) => setAppletStyles((prev) => [...prev, css]));
   }, [broker, appletSourceOverride]);
+
+  // Fire onReady exactly once: when connected and the first render has flushed
+  // (mutations > 0), or a short fallback after connect for an applet that renders
+  // nothing up front. The ref keeps it stable against onReady's changing identity.
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const readyFired = useRef(false);
+  useEffect(() => {
+    if (readyFired.current || status !== 'connected') return;
+    const fire = () => {
+      if (readyFired.current) return;
+      readyFired.current = true;
+      onReadyRef.current?.();
+    };
+    if (mutations > 0) {
+      fire();
+      return;
+    }
+    const t = window.setTimeout(fire, 250);
+    return () => window.clearTimeout(t);
+  }, [status, mutations]);
 
   // Two-origin (recommended, prod): VITE_SANDBOX_ORIGIN points at a different
   // origin and the dev server applies CSP via headers. Single-origin (e.g. GitHub

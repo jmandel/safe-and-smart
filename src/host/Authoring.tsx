@@ -58,12 +58,17 @@ export function Authoring() {
   const [exampleId, setExampleId] = useState<string>(shared ? 'shared' : EXAMPLES[0].id);
   const [files, setFiles] = useState<ProjectFile[]>(shared ?? lessonProject(LESSONS[0]));
   const [active, setActive] = useState(0);
-  const [compiled, setCompiled] = useState<string>();
   const [sha, setSha] = useState<string>();
   const [packages, setPackages] = useState<string[]>([]);
   const [diagnostics, setDiagnostics] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const [runKey, setRunKey] = useState(0);
+  // Double-buffered preview. Each layer is a mounted App (its own sandbox/worker).
+  // A freshly compiled bundle boots in a hidden layer; once it signals onReady we
+  // promote it (drop the older visible layer). So the previous output stays on
+  // screen — no teardown flash — until the new one is actually rendered.
+  type Layer = {key: number; source: string; ready: boolean};
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const runKeyRef = useRef(0);
   const [showRef, setShowRef] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
   const filesRef = useRef(files);
@@ -77,9 +82,16 @@ export function Authoring() {
       setDiagnostics(result.diagnostics);
       setPackages(result.fetchedPackages);
       if (result.ok && result.script) {
-        setCompiled(result.script);
         setSha(result.sha256);
-        setRunKey((k) => k + 1);
+        const key = (runKeyRef.current += 1);
+        const source = result.script;
+        setLayers((ls) => {
+          // Keep only the current visible layer as the baseline; discard any
+          // still-booting layer from a previous keystroke (cap live Apps at two).
+          const ready = ls.filter((l) => l.ready);
+          const baseline = ready.length ? [ready[ready.length - 1]!] : [];
+          return [...baseline, {key, source, ready: baseline.length === 0}];
+        });
       }
     } catch (error) {
       setDiagnostics([(error as Error).message]);
@@ -87,6 +99,18 @@ export function Authoring() {
       setBusy(false);
     }
   };
+
+  // Promote a booted layer: mark it ready and drop every older layer (its App
+  // unmounts, tearing down that sandbox). Same wrapper key → React keeps the
+  // booted App instance mounted across the swap, so there's no re-handshake.
+  const promote = (key: number) =>
+    setLayers((ls) => {
+      const idx = ls.findIndex((l) => l.key === key);
+      if (idx < 0) return ls;
+      const kept = ls.slice(idx);
+      kept[0] = {...kept[0]!, ready: true};
+      return kept;
+    });
 
   // Debounced auto-run: compile ~400ms after the last edit (and on mount / lesson
   // switch). ⌘↵ still forces an immediate run.
@@ -220,11 +244,21 @@ export function Authoring() {
         </section>
 
         <section className="play-preview">
-          {compiled ? (
-            <App key={runKey} appletSourceOverride={compiled} config={PREVIEW_CHROME} />
-          ) : (
+          {layers.length === 0 ? (
             <div className="play-placeholder">{busy ? 'Compiling…' : 'Press Run.'}</div>
+          ) : (
+            layers.map((l) => (
+              <div key={l.key} className={`play-buf${l.ready ? '' : ' play-buf--pending'}`} aria-hidden={!l.ready}>
+                <App appletSourceOverride={l.source} config={PREVIEW_CHROME} onReady={() => promote(l.key)} />
+              </div>
+            ))
           )}
+          {busy || layers.some((l) => !l.ready) ? (
+            <div className="play-updating" role="status">
+              <span className="play-updating-dot" aria-hidden />
+              updating
+            </div>
+          ) : null}
         </section>
       </div>
 

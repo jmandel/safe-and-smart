@@ -109,21 +109,33 @@ useEffect(() => { session.styles.add(css); }, []);
 `add()` resolves `{ok:false, error}` if the CSS is rejected (and the rejection is
 audited) — never silently dropped.
 
-## `session.files` — protected documents
+## Showing documents — `<Image>` and `session.files`
 
-Display a token-protected attachment (a scanned doc, a PDF, an image) **without ever
-holding its URL or token**. You get an opaque `handle`; the host resolves it to a
-blob it minted, and `<Image handle>` renders it.
+Documents aren't a separate way to fetch. A FHIR document is a `Binary`/`Attachment`
+you read like anything else with `session.smart`. Often the bytes are inline
+(`Attachment.data`, base64) — once you have them, you display them yourself:
 
 ```tsx
-const r = await session.files.open({url: 'Binary/123', title: 'Discharge summary'});
-if (r.ok) setHandle(r.handle);
-// …
-{handle ? <Image handle={handle} alt="Discharge summary" /> : null}
+// Data you already have → a self-contained data: URL. No fetch, nothing to leak.
+const dataUrl = `data:${attachment.contentType};base64,${attachment.data}`;
+<Image src={dataUrl} alt="Scanned note" />
 ```
 
-The applet cannot set a raw `src` — the element only accepts a `handle` — so the
-image can't be pointed at an external URL even by mistake.
+`<Image src>` accepts **`data:` URLs only** — self-contained, so they make no
+network request. A remote (`http(s)`) src is rejected (that would be an
+applet-controlled image source — the exfil vector the sandbox forbids).
+
+You only need **`session.files.open`** for the case you genuinely can't reach: an
+`Attachment.url` that's absolute / on another server and needs the clinician's token.
+The wrapper fetches it for you (with the token, host-side) and returns an opaque
+`handle` you render with `<Image handle>` — you never hold the URL or token.
+
+```tsx
+const r = await session.files.open({url: 'https://docs.example/scan.pdf'});
+if (r.ok) setHandle(r.handle);
+// …
+{handle ? <Image handle={handle} alt="External scan" /> : null}
+```
 
 ## `session.audit` — accountability
 

@@ -41,6 +41,16 @@ function validateStyleableProp(tag: string, property: string, value: unknown): v
         throw new SafeDomViolation(`className token "${token}" on <${tag}> is not allowed.`);
       }
     }
+  } else if (property === 'src') {
+    // Only self-contained data: URLs (no network, no exfil). A remote/relative URL
+    // would be an applet-controlled image source — exactly what we forbid.
+    if (value == null) return;
+    if (typeof value !== 'string' || !/^data:/i.test(value)) {
+      throw new SafeDomViolation(`src on <${tag}> must be a data: URL.`);
+    }
+    if (value.length > 16_000_000) {
+      throw new SafeDomViolation(`src on <${tag}> exceeds the data: URL size limit.`);
+    }
   }
 }
 

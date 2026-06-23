@@ -88,17 +88,19 @@ export function Authoring() {
     }
   };
 
+  // Debounced auto-run: compile ~400ms after the last edit (and on mount / lesson
+  // switch). ⌘↵ still forces an immediate run.
   useEffect(() => {
-    void run();
+    const t = setTimeout(() => void run(), 400);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [files]);
 
   const load = (next: ProjectFile[]) => {
-    setFiles(next);
+    setFiles(next); // the debounced effect picks up the change and runs it
     setActive(0);
     setShareMsg('');
     if (window.location.hash) window.history.replaceState(null, '', window.location.pathname);
-    void run(next);
   };
   const loadLesson = (i: number) => {
     setLessonIdx(i);

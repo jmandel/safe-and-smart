@@ -489,16 +489,17 @@ const TextareaRenderer = createRemoteComponentRenderer(function TextareaRenderer
 // clinical.fetchAttachment); the URL is resolved host-side from the registry, so an
 // applet can never set a raw src or learn the token-protected URL. The blob: src is
 // permitted by the host CSP (img-src blob:).
-const ImageRenderer = createRemoteComponentRenderer(function ImageRenderer({handle, alt}: any) {
+const ImageRenderer = createRemoteComponentRenderer(function ImageRenderer({src, handle, alt}: any) {
+  const altText = String(alt ?? 'image').slice(0, 200);
+  // A self-contained data: URL the applet already has (firewall-validated to be
+  // data: only — no network). The common case for inline attachment bytes.
+  if (typeof src === 'string' && /^data:/i.test(src)) {
+    return <img className="remote-image" src={src} alt={altText} />;
+  }
+  // Otherwise an opaque handle from session.files.open (broker-fetched).
   const attachment = typeof handle === 'string' ? getAttachment(handle) : undefined;
-  if (!attachment) return <div className="remote-image-error">Attachment unavailable.</div>;
-  return (
-    <img
-      className="remote-image"
-      src={attachment.url}
-      alt={String(alt ?? 'attachment').slice(0, 200)}
-    />
-  );
+  if (!attachment) return <div className="remote-image-error">No image source.</div>;
+  return <img className="remote-image" src={attachment.url} alt={altText} />;
 });
 
 export const remoteComponentMap: RemoteComponentRendererMap = new Map([

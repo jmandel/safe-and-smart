@@ -39,7 +39,7 @@ export const LESSONS: Lesson[] = [
     id: 'session',
     title: 'Everything you can do arrives in one prop: session',
     prose:
-      "If you can't touch the network or the token, how do you do anything? The wrapper hands your component a single prop, `session`. You don't perform privileged actions — you state intent, and the trusted wrapper performs them for you and hands back the result. You never see the token. That one idea — say what you want, the wrapper does the privileged part — is the whole model. Start with `session.smart.patient`, the patient the clinician launched on.",
+      "If you can't touch the network, how do you read a chart or call a service? The wrapper hands your component a single prop, `session`. You don't perform privileged actions — you state intent, and the trusted wrapper performs them for you and hands back the result. The thing it never hands you is the **token**: the OAuth access token from the SMART launch — a bearer credential that authorizes API calls as this clinician. Anything holding that string could impersonate her or copy it out, so it stays in the wrapper. That one idea — say what you want, the wrapper does the privileged part with the token you never see — is the whole model. Start with `session.smart.patient`.",
     code: app(`function App({ session }) {
   const [n, setN] = useState(0);
   return (
@@ -147,20 +147,24 @@ function App({ session }) {
   },
   {
     id: 'files',
-    title: 'Showing a protected document — session.files',
+    title: 'Showing documents — data you have vs. data you don’t',
     prose:
-      "Here's where the model pays off. A clinical document (a scan, a PDF) sits behind the same token you never get to see. So you don't fetch it — you ask `session.files.open`, and the wrapper fetches it with the token and hands you back an opaque *handle*, not a URL. You render the handle with `<Image>`; the wrapper resolves it. You display the document without ever holding its address or the credential — the bargain again, now for binaries.",
+      "Documents aren't a special way to fetch — a FHIR document is usually a Binary or an Attachment, and you read it like anything else with `session.smart`. An Attachment often carries its bytes inline as base64 `data`. Once you have the bytes you display them yourself: build a `data:<contentType>;base64,<data>` URL and pass it to `<Image src>`. A data: URL is self-contained, so there's no fetch and nothing to leak (the wrapper only blocks applet-controlled *remote* image sources). You only need `session.files.open` for the one case you genuinely can't reach: an Attachment at an absolute URL on another server that needs the clinician's token — then the wrapper fetches it for you and returns an opaque handle for `<Image handle>`.",
     code: app(`function App({ session }) {
-  const [handle, setHandle] = useState();
-  useEffect(() => {
-    session.files.open({ url: 'demo:discharge-summary', title: 'Discharge summary' })
-      .then((r) => r.ok && setHandle(r.handle));
-  }, []);
+  // In FHIR an Attachment often has inline base64 \`data\` + \`contentType\`. You
+  // already have the bytes, so just show them — no fetch, no handle.
+  const contentType = 'image/svg+xml';
+  const data = btoa(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='240' height='120'>" +
+    "<rect width='240' height='120' rx='10' fill='#0e7490'/>" +
+    "<text x='20' y='66' fill='#fff' font-family='sans-serif' font-size='15'>Inline document</text></svg>"
+  );
+  const dataUrl = 'data:' + contentType + ';base64,' + data;
   return (
     <ui.Stack gap={10}>
-      <ui.Heading level={2}>A protected document</ui.Heading>
-      <ui.Text tone="muted">No URL, no token — just an opaque handle the wrapper resolves.</ui.Text>
-      {handle ? <ui.Image handle={handle} alt="Discharge summary" /> : <ui.Text tone="muted">Loading…</ui.Text>}
+      <ui.Heading level={2}>Showing a document</ui.Heading>
+      <ui.Text tone="muted">Inline attachment bytes → a self-contained data: URL. No fetch, nothing to leak.</ui.Text>
+      <ui.Image src={dataUrl} alt="Inline document" />
     </ui.Stack>
   );
 }`),

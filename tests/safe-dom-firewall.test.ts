@@ -105,6 +105,19 @@ describe('createSafeDomFirewall', () => {
     );
   });
 
+  it('allows a data: image src but rejects remote/relative src', () => {
+    const fw = createSafeDomFirewall();
+    expect(() =>
+      fw.validateRecords([insert(el('a', 'ui-image', {properties: {src: 'data:image/png;base64,AAAA'}}))]),
+    ).not.toThrow();
+    expect(() =>
+      fw.validateRecords([insert(el('b', 'ui-image', {properties: {src: 'http://evil/x'}}))]),
+    ).toThrow(/src on <ui-image> must be a data: URL/);
+    expect(() =>
+      fw.validateRecords([insert(el('c', 'ui-image', {properties: {src: 'Binary/123'}}))]),
+    ).toThrow(/data: URL/);
+  });
+
   it('enforces the text length quota', () => {
     const fw = createSafeDomFirewall();
     const huge = 'x'.repeat(100_001);

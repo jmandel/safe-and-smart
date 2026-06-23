@@ -8,7 +8,7 @@
 //
 // Bump SAFE_DOM_SCHEMA_VERSION on any change; the handshake can use it to refuse
 // an applet built against an incompatible surface.
-export const SAFE_DOM_SCHEMA_VERSION = '1.5.0';
+export const SAFE_DOM_SCHEMA_VERSION = '1.6.0';
 
 export type SafePropType = 'string' | 'number' | 'boolean' | 'array' | 'object';
 
@@ -166,9 +166,14 @@ export const SAFE_DOM_SCHEMA: Readonly<Record<string, SafeElementSchema>> = {
     children: false,
   },
   'ui-image': {
-    // `handle` is an OPAQUE attachment handle from clinical.fetchAttachment — NOT a
-    // URL. The renderer resolves it host-side; the applet cannot set a raw src.
-    properties: {handle: 'string', alt: 'string'},
+    // Two ways to show an image, both safe:
+    //   `src`    — a self-contained data: URL the applet already has (e.g. inline
+    //              FHIR Attachment.data). Validated to be `data:` only — no remote
+    //              fetch, so no exfil. This is the common case.
+    //   `handle` — an OPAQUE handle from session.files.open, for an attachment the
+    //              applet can't fetch itself (absolute/external URL needing the
+    //              token). Resolved host-side; the applet never holds the URL.
+    properties: {src: 'string', handle: 'string', alt: 'string'},
     events: [],
     children: false,
   },

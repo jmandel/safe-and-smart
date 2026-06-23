@@ -16,7 +16,7 @@ describe('@quilted/threads MessagePort RPC', () => {
   // Skipped under the Bun test runtime: Bun's MessagePort does not complete the
   // @quilted/threads handshake (a Bun limitation, not app code). The full RPC
   // handshake + nested capabilities are exercised in a real browser by the
-  // Playwright e2e (tests/browser/spike.spec.ts).
+  // content smoke harness (tests/content/smoke.mjs) and the red-team suite.
   it.skip('preserves nested callable capabilities returned by a handshake', async () => {
     const channel = new MessageChannel();
     channel.port1.start();

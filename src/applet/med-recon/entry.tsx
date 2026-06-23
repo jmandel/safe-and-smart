@@ -1,6 +1,6 @@
-// Standalone entry for the medication-reconciliation applet. Built by
-// tools/build-applet.ts into dist/applets/med-recon.js (a self-contained classic
-// worker script) and loadable at runtime via the wrapper's ?applet=<url>.
+// Standalone entry for the medication-reconciliation applet. Built by build.ts
+// into dist/applets/med-recon.js (a self-contained classic worker script) and
+// loadable at runtime via the wrapper's ?applet=<url>.
 import {runApplet} from '../runtime';
 import {App} from './App';
 

@@ -32,7 +32,7 @@ function ApiReference({onClose}: {onClose: () => void}) {
         <p>Your applet gets one prop, <code>session</code>. Globals here: <code>React</code> hooks, <code>ui</code>, <code>runApplet</code>.</p>
         <dl>
           <dt>session.smart</dt>
-          <dd><code>.patient .user .scopes</code> · <code>.search(type, params)</code> · <code>.read(type, id)</code> · <code>.request(url, init?)</code></dd>
+          <dd><code>.patient .user .scopes .encounter? .fhirBaseUrl</code> · <code>.search(type, params)</code> · <code>.read(type, id)</code> · <code>.request(url, init?)</code></dd>
           <dt>session.ai</dt>
           <dd><code>.complete(req)</code> · <code>.stream(req, (delta) =&gt; …)</code></dd>
           <dt>session.styles</dt>
@@ -41,6 +41,8 @@ function ApiReference({onClose}: {onClose: () => void}) {
           <dd>inline bytes → <code>&lt;ui.Image src=&#123;dataUrl&#125;&gt;</code> (data: only — no remote fetch)</dd>
           <dt>session.audit</dt>
           <dd><code>(&#123;code?, message&#125;)</code></dd>
+          <dt>session.probe</dt>
+          <dd><code>.directNetworkBlocked .directDomUnavailable .persistentStorageBlocked</code> (read-only)</dd>
           <dt>components</dt>
           <dd>Stack · Grid · Box · Inline · Card · Heading · Text · Badge · Alert · Stat · Button · Select · Slider · Input · Textarea · Table · Vega · Svg · Image · Code</dd>
         </dl>

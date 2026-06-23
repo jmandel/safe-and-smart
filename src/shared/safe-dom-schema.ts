@@ -27,10 +27,9 @@ export interface SafeElementSchema {
 // applet-author props. They must be accepted by the firewall.
 export const STRUCTURAL_TAGS = ['remote-root', 'remote-fragment'] as const;
 
-// Properties that carry author styling and are validated by VALUE (not just by
-// name): `style` is run through validateStyleObject, `className` through a token
-// check. The firewall enforces this; renderers apply the validated result.
-export const STYLEABLE_PROPERTIES = ['style', 'className'] as const;
+// Note on styling: `style` and `className` are validated by VALUE (not just by
+// name) — `style` through validateStyleObject, `className` through a token check.
+// That gating lives in safe-dom-firewall.ts (validateStyleableProp).
 
 export const SAFE_DOM_SCHEMA: Readonly<Record<string, SafeElementSchema>> = {
   // Styleable layout/text primitives: the honest escape hatch from enumerated

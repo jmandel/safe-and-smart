@@ -5,9 +5,10 @@
 //   VITE_SANDBOX_ORIGIN    'self' for single-origin (Pages) or a 2nd origin (dev)
 //   VITE_FHIR_*, VITE_USE_MOCK, VITE_SMART_*   broker / SMART defaults
 //
-// Produces dist/ with: index.html (landing), app.html (wrapper runtime),
-// sandbox.html (launcher) + hashed assets, and applets/*.js (standalone classic
-// worker bundles loaded at runtime).
+// Produces dist/ with: index.html (landing), run/index.html (wrapper runtime),
+// author/index.html (playground), fhir/index.html (SMART launch), sandbox.html
+// (launcher) + hashed assets, and applets/*.js (standalone classic worker bundles
+// loaded at runtime).
 import {rmSync, mkdirSync, writeFileSync, copyFileSync} from 'node:fs';
 
 const BASE = process.env.VITE_BASE ?? '/';

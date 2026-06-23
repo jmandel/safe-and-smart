@@ -5,14 +5,8 @@
 import {createServer} from 'node:http';
 import {readdirSync, mkdirSync, existsSync} from 'node:fs';
 import {createRequire} from 'node:module';
-// Resolve playwright from either a global install (local dev) or the project.
 const require = createRequire(import.meta.url);
-let chromium;
-try {
-  ({chromium} = require('/home/jmandel/node_modules/playwright-core/index.js'));
-} catch {
-  ({chromium} = require('playwright-core'));
-}
+const {chromium} = require('playwright-core'); // declared in devDependencies
 
 const WRAPPER = process.env.WRAPPER ?? 'http://localhost:4273';
 // Use an explicit chromium path if provided/known; otherwise let Playwright use

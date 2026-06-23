@@ -13,12 +13,7 @@ import {readdirSync, mkdirSync, existsSync} from 'node:fs';
 import {createRequire} from 'node:module';
 
 const require = createRequire(import.meta.url);
-let chromium;
-try {
-  ({chromium} = require('/home/jmandel/node_modules/playwright-core/index.js'));
-} catch {
-  ({chromium} = require('playwright-core'));
-}
+const {chromium} = require('playwright-core'); // declared in devDependencies
 
 const WRAPPER = process.env.WRAPPER ?? 'http://localhost:4273';
 const LOCAL_CHROME = '/home/jmandel/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';

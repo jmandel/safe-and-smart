@@ -341,7 +341,7 @@ const BUILTINS: AppletEntry[] = [
     label: 'Styled Vitals — CSS',
     value: applet('styled-vitals.js'),
     group: 'Capability demos',
-    blurb: 'Author real CSS (grid, @media, @keyframes, gradients) installed + scoped via registerStylesheet; validated inline style.',
+    blurb: 'Author real CSS (grid, @media, @keyframes, gradients) installed + scoped via session.styles.add; validated inline style.',
     tests: ['CSS stylesheet', 'Inline style', 'ui-box/ui-inline'],
   },
   {

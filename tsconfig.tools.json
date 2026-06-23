@@ -1,0 +1,20 @@
+{
+  // Standalone typecheck for the build/release tooling, which `tsc -b` (the src app
+  // project) does not cover. These run under Bun, so they get bun-types. Run via
+  // `tsc -p` (not -b) to keep them out of the composite graph — they import a few
+  // pure src modules, which resolve fine in a single non-composite program.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["bun-types"]
+  },
+  "include": ["build.ts", "tools/**/*.ts"]
+}

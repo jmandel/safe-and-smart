@@ -93,8 +93,6 @@ export const StylesheetSchema = z.object({
   css: z.string().min(1).max(256_000),
 });
 
-export type Stylesheet = z.infer<typeof StylesheetSchema>;
-
 export interface StylesheetResult {
   ok: boolean;
   error?: string;
